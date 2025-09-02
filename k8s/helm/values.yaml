@@ -1,0 +1,19 @@
+global:
+  imagePullSecrets:
+    - name: "ces-container-registries"
+controllerManager:
+  manager:
+    env:
+      stage: production
+      logLevel: info
+    image:
+      registry: docker.io
+      repository: cloudogu/k8s-ces-assets
+      tag: 0.0.2
+    imagePullPolicy: Always
+    resources:
+      requests:
+        cpu: 15m
+        memory: 105M
+      limits:
+        memory: 105M
