@@ -18,6 +18,10 @@ controllerManager:
     configMaps:
       - name: nginx.conf
         path: "nginx.conf"
+      - name: ces-about.conf
+        path: "include.d/ces-about.conf"
+      - name: errors.conf
+        path: "include.d/errors.conf"
       - name: default-dogu.conf
         path: "include.d/default-dogu.conf"
       - name: customhtml.conf

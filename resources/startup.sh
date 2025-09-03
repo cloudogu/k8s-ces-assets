@@ -109,7 +109,7 @@ function startNginx() {
 
 # make the script only run when executed, not when sourced from bats tests.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  sleep 10000
+  #sleep 10000
   printCloudoguLogo
   # configureWarpMenu
   configureDefaultDogu

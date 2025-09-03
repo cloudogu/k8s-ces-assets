@@ -1,3 +1,24 @@
+{{- $root := . -}}
+{{- $base := "resources/etc/nginx" -}}
+{{- $files := $root.Files.Glob (printf "%s/**" $base) -}}
+{{- if or (not $files) (eq (len $files) 0) -}}
+{{- fail (printf "Keine Dateien unter %q gefunden – Pfad oder .helmignore prüfen." $base) -}}
+{{- end -}}
+
+{{- /* Volume-ConfigMap items vorbereiten: [{key:<filename>, path:<rel>}, ...] */ -}}
+{{- $cmItems := list -}}
+{{- $mountItems := list -}}
+{{- range $path, $_ := $files }}
+  {{- $rel  := trimPrefix (printf "%s/" $base) $path -}}
+  {{- $name := base $rel -}}
+  {{- $cmItems = append $cmItems (dict "key" $name "path" $rel) -}}
+  {{- $mountItems  = append $mountItems (dict
+          "name"      "app-config"
+          "mountPath" (printf "/etc/nginx/%s" $rel)
+          "subPath"   $rel
+          "readOnly"  true ) -}}
+{{- end -}}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,10 +46,7 @@ spec:
           configMap:
             name:  k8s-ces-assets-nginx-conf
             items:
-            {{- range $i, $cm := .Values.controllerManager.manager.configMaps | default (list) }}
-              - key: {{ $cm.name | quote }}
-                path: {{ $cm.path | quote }}
-            {{- end }}
+              {{- toYaml $cmItems | nindent 14 }}
       containers:
       - args:
           - --health-probe-bind-address=:8081
@@ -42,12 +60,7 @@ spec:
         image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
         imagePullPolicy: {{ .Values.controllerManager.manager.imagePullPolicy }}
         volumeMounts:
-          {{- range .Values.controllerManager.manager.configMaps }}
-          - name: app-config
-            mountPath: /etc/nginx/{{ .path }}
-            subPath: {{ .path }}
-            readOnly: true
-          {{- end }}
+          {{- toYaml $mountItems | nindent 12 }}
         livenessProbe:
           httpGet:
             path: /healthz
