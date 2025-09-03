@@ -1,6 +1,15 @@
 global:
   imagePullSecrets:
     - name: "ces-container-registries"
+service:
+  port: 80
+  targetPort: 80
+ingress:
+  className: "k8s-ecosystem-ces-service"
+  host: ""
+  path: "/"
+  pathType: "Prefix"
+  annotations: {}
 controllerManager:
   manager:
     env:
@@ -15,17 +24,6 @@ controllerManager:
       defaultDogu: "usrmgmt"
       disableAccessLog: false
       htmlContentUrl: "static"
-    configMaps:
-      - name: nginx.conf
-        path: "nginx.conf"
-      - name: ces-about.conf
-        path: "include.d/ces-about.conf"
-      - name: errors.conf
-        path: "include.d/errors.conf"
-      - name: default-dogu.conf
-        path: "include.d/default-dogu.conf"
-      - name: customhtml.conf
-        path: "include.d/customhtml.conf"
     resources:
       requests:
         cpu: 15m
