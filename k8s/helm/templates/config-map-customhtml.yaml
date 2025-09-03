@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.initContainer.configMapName }}
+data:
+  sample.html: |-
+    <html><body>Sample</body></html>

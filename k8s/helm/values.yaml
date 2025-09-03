@@ -10,6 +10,11 @@ ingress:
   path: "/"
   pathType: "Prefix"
   annotations: {}
+initContainer:
+  repository: alpine
+  tag: "3.20"
+  customHtmlMountPath: "/var/www/html/customhtml/"
+  configMapName: "k8s-ces-assets-customhtml"
 controllerManager:
   manager:
     env:

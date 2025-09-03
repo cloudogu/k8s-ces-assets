@@ -21,6 +21,11 @@
           "readOnly"  true ) -}}
 {{- end -}}
 
+{{- $mountItems = append $mountItems (dict
+        "name"      "customhtml-dst"
+        "mountPath" .Values.initContainer.customHtmlMountPath
+        "readOnly"  true ) -}}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -44,11 +49,36 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       volumes:
+        - name: customhtml-src
+          configMap:
+            name: {{ .Values.initContainer.configMapName }}
+        - name: customhtml-dst
+          emptyDir: {}
         - name: app-config
           configMap:
             name:  k8s-ces-assets-nginx-conf
             items:
               {{- toYaml $cmItems | nindent 14 }}
+      initContainers:
+        - name: copy-customhtml
+          image: "{{ .Values.initContainer.repository }}:{{ .Values.initContainer.tag }}"
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - >
+              set -eu;
+              SRC=/config;
+              DST=/workdir;
+              mkdir -p "$DST";
+              if [ "$(ls -A "$SRC" 2>/dev/null || true)" ]; then
+                cp -a "$SRC/." "$DST/";
+              fi;
+          volumeMounts:
+            - name: customhtml-src
+              mountPath: /config
+            - name: customhtml-dst
+              mountPath: /workdir
       containers:
       - name: manager
         env:
