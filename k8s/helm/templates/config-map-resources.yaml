@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-ces-assets-nginx-conf
+data:
+  {{- $root := . }}
+  {{- range $i, $cm := .Values.controllerManager.manager.configMaps | default (list) }}
+  {{- $rel := trimPrefix "/" $cm.path }}
+  {{- $src := printf "resources/etc/nginx/%s" $rel }}
+  "{{ $cm.name }}": |-
+{{ tpl ($root.Files.Get $src) $root | nindent 4 }}
+  {{- end }}

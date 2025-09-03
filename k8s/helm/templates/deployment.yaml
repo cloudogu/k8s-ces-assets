@@ -20,6 +20,15 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
         {{- end }}
+      volumes:
+        - name: app-config
+          configMap:
+            name:  k8s-ces-assets-nginx-conf
+            items:
+            {{- range $i, $cm := .Values.controllerManager.manager.configMaps | default (list) }}
+              - key: {{ $cm.name | quote }}
+                path: {{ $cm.path | quote }}
+            {{- end }}
       containers:
       - args:
           - --health-probe-bind-address=:8081
@@ -32,6 +41,13 @@ spec:
           value: {{ quote .Values.controllerManager.manager.env.logLevel | default "info"}}
         image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
         imagePullPolicy: {{ .Values.controllerManager.manager.imagePullPolicy }}
+        volumeMounts:
+          {{- range .Values.controllerManager.manager.configMaps }}
+          - name: app-config
+            mountPath: /etc/nginx/{{ .path }}
+            subPath: {{ .path }}
+            readOnly: true
+          {{- end }}
         livenessProbe:
           httpGet:
             path: /healthz

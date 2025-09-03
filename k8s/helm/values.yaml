@@ -11,6 +11,17 @@ controllerManager:
       repository: cloudogu/k8s-ces-assets
       tag: 0.0.2
     imagePullPolicy: Always
+    config:
+      defaultDogu: "usrmgmt"
+      disableAccessLog: false
+      htmlContentUrl: "static"
+    configMaps:
+      - name: nginx.conf
+        path: "nginx.conf"
+      - name: default-dogu.conf
+        path: "include.d/default-dogu.conf"
+      - name: customhtml.conf
+        path: "include.d/customhtml.conf"
     resources:
       requests:
         cpu: 15m
