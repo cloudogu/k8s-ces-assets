@@ -11,7 +11,9 @@
 {{- range $path, $_ := $files }}
   {{- $rel  := trimPrefix (printf "%s/" $base) $path -}}
   {{- $name := base $rel -}}
-  {{- $cmItems = append $cmItems (dict "key" $name "path" $rel) -}}
+  {{- $cmItems = append $cmItems (dict
+          "key" $name
+          "path" $rel) -}}
   {{- $mountItems  = append $mountItems (dict
           "name"      "app-config"
           "mountPath" (printf "/etc/nginx/%s" $rel)
@@ -48,10 +50,7 @@ spec:
             items:
               {{- toYaml $cmItems | nindent 14 }}
       containers:
-      - args:
-          - --health-probe-bind-address=:8081
-          - --metrics-bind-address=127.0.0.1:8080
-        name: manager
+      - name: manager
         env:
         - name: STAGE
           value: {{ quote .Values.controllerManager.manager.env.stage | default "production" }}
@@ -61,18 +60,6 @@ spec:
         imagePullPolicy: {{ .Values.controllerManager.manager.imagePullPolicy }}
         volumeMounts:
           {{- toYaml $mountItems | nindent 12 }}
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 20
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 8081
-          initialDelaySeconds: 15
-          periodSeconds: 10
         securityContext:
           allowPrivilegeEscalation: false
       securityContext:

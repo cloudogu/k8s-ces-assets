@@ -63,7 +63,9 @@ RUN adduser nginx -D
 RUN set -x \
  && mkdir -p /var/www/html \
  && mkdir -p /var/www/html/customhtml \
- && mkdir -p /var/log/nginx
+ && mkdir -p /var/log/nginx \
+ && mkdir -p /etc/nginx/include.d \
+ && mkdir -p /etc/nginx/conf.d
 
 # install ces-about page
 RUN wget -O /tmp/ces-about-v${CES_ABOUT_VERSION}.tar.gz https://github.com/cloudogu/ces-about/releases/download/v${CES_ABOUT_VERSION}/ces-about_v${CES_ABOUT_VERSION}.tar.gz \
