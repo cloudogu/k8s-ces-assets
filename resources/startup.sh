@@ -62,15 +62,6 @@ function configureWarpMenu() {
   sed -i "s|/warp/menu.json|/warp/menu/menu.json|g" /var/www/html/warp/warp.js
 }
 
-# Templates the /etc/nginx/include.d/customhtml.conf.tpl file with doguctl into /etc/nginx/include.d/customhtml.conf.
-#
-# Creates a new special location for custom content, where the user can deploy his own custom content.
-function configureCustomHtmlContent() {
-  log "Configure custom content pages..."
-
-  doguctl template /etc/nginx/include.d/customhtml.conf.tpl /etc/nginx/include.d/customhtml.conf
-}
-
 # Starts the nginx server.
 function startNginx() {
   log "Starting nginx service..."
@@ -79,10 +70,8 @@ function startNginx() {
 
 # make the script only run when executed, not when sourced from bats tests.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  #sleep 10000
   printCloudoguLogo
   # configureWarpMenu
-  #configureCustomHtmlContent
-  #configureMaintenanceModeSite
+  # configureMaintenanceModeSite
   startNginx
 fi
