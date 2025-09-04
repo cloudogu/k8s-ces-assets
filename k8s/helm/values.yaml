@@ -13,7 +13,7 @@ ingress:
 initContainer:
   repository: alpine
   tag: "3.20"
-  customHtmlMountPath: "/var/www/html/customhtml/"
+  customHtmlMountPath: "/var/www/customhtml/"
   configMapName: "k8s-ces-assets-customhtml"
 controllerManager:
   manager:
