@@ -1,5 +1,5 @@
 {{- $root := . -}}
-{{- $base := "resources/etc/nginx" -}}
+{{- $base := "resources" -}}
 {{- $files := $root.Files.Glob (printf "%s/**" $base) -}}
 {{- if or (not $files) (eq (len $files) 0) -}}
 {{- fail (printf "Keine Dateien unter %q gefunden – Pfad oder .helmignore prüfen." $base) -}}

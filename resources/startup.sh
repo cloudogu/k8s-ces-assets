@@ -48,15 +48,11 @@ function configureMaintenanceModeSite() {
   doguctl config --remove maintenance || true
 }
 
-# Templates the /var/www/html/warp/add-warp-menu.js.tpl file with doguctl into /var/www/html/warp/add-warp-menu.js.
-# Adds the dogu-version to asset-urls for cache busting.
 # Configures the warp menu script as the menu.json gets mounted from a configmap into "/var/www/html/warp/menu"
 # instead of "/var/www/html/warp". This is a special constraints when mounting config maps. Mounting the warp menu
 # json directly into the warp folder would directly delete other files in the warp folder, including the warp.js script.
 function configureWarpMenu() {
   log "Configure warp menu..."
-
-  doguctl template "/var/www/html/warp/add-warp-menu.js.tpl" "/var/www/html/warp/add-warp-menu.js"
 
   # Replace /warp/menu.json with /warp/menu/menu.json
   sed -i "s|/warp/menu.json|/warp/menu/menu.json|g" /var/www/html/warp/warp.js
@@ -71,7 +67,7 @@ function startNginx() {
 # make the script only run when executed, not when sourced from bats tests.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   printCloudoguLogo
-  # configureWarpMenu
+  configureWarpMenu
   # configureMaintenanceModeSite
   startNginx
 fi

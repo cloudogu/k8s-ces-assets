@@ -1,5 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-ces-assets
+ARTIFACT_ID_WARP=${ARTIFACT_ID}-warp
 VERSION=0.0.2
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 
@@ -12,7 +13,7 @@ K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
 HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage template-log-level template-image-pull-policy
-IMAGE_IMPORT_TARGET=image-import
+IMAGE_IMPORT_TARGET=images-import
 
 include build/make/variables.mk
 include build/make/self-update.mk
@@ -27,6 +28,8 @@ include build/make/mocks.mk
 
 include build/make/k8s-controller.mk
 include build/make/k8s.mk
+
+IMAGE_DEV_WARP=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH)
 
 ##@ Deployment
 
@@ -71,6 +74,9 @@ helm-values-replace-image-repo: $(BINARY_YQ)
       		echo "Setting dev image repo in target value.yaml!" ;\
     		$(BINARY_YQ) -i e ".controllerManager.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
     		$(BINARY_YQ) -i e ".controllerManager.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+    		echo "Setting warp dev image repo in target value.yaml!" ;\
+            $(BINARY_YQ) -i e ".controllerManager.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+            $(BINARY_YQ) -i e ".controllerManager.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
     	fi
 
 .PHONY: kill-operator-pod
@@ -87,3 +93,26 @@ build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version 
 print-debug-info: ## Generates info and the list of environment variables required to start the operator in debug mode.
 	@echo "The target generates a list of env variables required to start the operator in debug mode. These can be pasted directly into the 'go build' run configuration in IntelliJ to run and debug the operator on-demand."
 	@echo "STAGE=$(STAGE);LOG_LEVEL=$(LOG_LEVEL);KUBECONFIG=$(KUBECONFIG);NAMESPACE=$(NAMESPACE);"
+
+# Custom targets:
+
+.PHONY: mocks
+mocks: ${MOCKERY_BIN} ## target is used to generate mocks for all interfaces in a project.
+	cd ${WORKDIR}/warp && ${MOCKERY_BIN}
+	@echo "Mocks successfully created."
+
+.PHONY: docker-build
+docker-build: check-docker-credentials check-k8s-image-env-var ${BINARY_YQ} ## Builds the docker image of the K8s app.
+	@echo "Building docker image $(IMAGE) in directory $(IMAGE_DIR)..."
+	@DOCKER_BUILDKIT=1 docker build $(IMAGE_DIR) -t $(IMAGE)
+
+.PHONY: images-import
+images-import: ## import images from ces-importer and
+	@echo "Import k8s-ces-assets image"
+	@make image-import \
+		IMAGE_DIR=.
+	@echo "Import warp assets image"
+	@make image-import \
+		IMAGE_DIR=./warp \
+		IMAGE=${ARTIFACT_ID_WARP}:${VERSION} \
+		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH):${VERSION} \

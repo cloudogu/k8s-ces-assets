@@ -1,5 +1,5 @@
 {{- $root := . -}}
-{{- $base := "resources/etc/nginx" -}}
+{{- $base := "resources" -}}
 {{- $files := $root.Files.Glob (printf "%s/**" $base) -}}
 {{- if or (not $files) (eq (len $files) 0) -}}
 {{- fail (printf "Keine Dateien unter %q gefunden – Pfad oder .helmignore prüfen." $base) -}}
@@ -16,7 +16,7 @@
           "path" $rel) -}}
   {{- $mountItems  = append $mountItems (dict
           "name"      "app-config"
-          "mountPath" (printf "/etc/nginx/%s" $rel)
+          "mountPath" (printf "%s" $rel)
           "subPath"   $rel
           "readOnly"  true ) -}}
 {{- end -}}
@@ -25,6 +25,10 @@
         "name"      "customhtml-dst"
         "mountPath" .Values.initContainer.customHtmlMountPath
         "readOnly"  true ) -}}
+
+{{- $mountItems = append $mountItems (dict
+        "name"      "warp-json"
+        "mountPath" .Values.controllerManager.warp.mountPath) -}}
 
 apiVersion: apps/v1
 kind: Deployment
@@ -59,6 +63,8 @@ spec:
             name:  k8s-ces-assets-nginx-conf
             items:
               {{- toYaml $cmItems | nindent 14 }}
+        - name: warp-json
+          emptyDir: {}
       initContainers:
         - name: copy-customhtml
           image: "{{ .Values.initContainer.repository }}:{{ .Values.initContainer.tag }}"
@@ -92,6 +98,22 @@ spec:
           {{- toYaml $mountItems | nindent 12 }}
         securityContext:
           allowPrivilegeEscalation: false
+      - name: warp
+        image: "{{ .Values.controllerManager.warp.image.registry }}/{{ .Values.controllerManager.warp.image.repository }}:{{ .Values.controllerManager.warp.image.tag }}"
+        imagePullPolicy: {{ .Values.controllerManager.warp.imagePullPolicy }}
+        volumeMounts:
+        - name: "warp-json"
+          mountPath: {{ quote .Values.controllerManager.warp.mountPath }}
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: WARP_PATH
+          value: {{ quote .Values.controllerManager.warp.mountPath | default "/var/www/html/warp/"}}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
       securityContext:
         runAsNonRoot: false
+      serviceAccountName: {{ include "k8s-ces-assets.name" . }}-controller-manager
       terminationGracePeriodSeconds: 10
