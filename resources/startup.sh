@@ -24,30 +24,6 @@ function log() {
   echo "[nginx-static][startup] ${message}"
 }
 
-# Templates the maintenance mode site with the title and text provided in the ces-configuration.
-function configureMaintenanceModeSite() {
-  log "Configure maintenance site..."
-
-  local entryJSON=""
-  entryJSON="$(doguctl config -g -d '{"title": "Wartungsmodus", "text": "Das EcoSystem ist aktuell nicht erreichbar - Bitte warten Sie"}' maintenance)"
-
-  if [ "${entryJSON}" == "" ]; then
-      return
-  fi
-
-  local title=""
-  title="$(echo "${entryJSON}" | jq -r ".title")"
-  doguctl config maintenance/title "${title}"
-
-  local text=""
-  text="$(echo "${entryJSON}" | jq -r ".text")"
-  doguctl config maintenance/text "${text}"
-
-  doguctl template /var/www/html/errors/503.html.tpl /var/www/html/errors/503.html
-
-  doguctl config --remove maintenance || true
-}
-
 # Configures the warp menu script as the menu.json gets mounted from a configmap into "/var/www/html/warp/menu"
 # instead of "/var/www/html/warp". This is a special constraints when mounting config maps. Mounting the warp menu
 # json directly into the warp folder would directly delete other files in the warp folder, including the warp.js script.
@@ -68,6 +44,5 @@ function startNginx() {
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
   printCloudoguLogo
   configureWarpMenu
-  # configureMaintenanceModeSite
   startNginx
 fi

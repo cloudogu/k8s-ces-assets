@@ -30,6 +30,10 @@
         "name"      "warp-json"
         "mountPath" .Values.controllerManager.warp.mountPath) -}}
 
+{{- $mountItems = append $mountItems (dict
+        "name"      "error-503"
+        "mountPath" (printf "%s" .Values.controllerManager.maintenance.errorPage.dir)) -}}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -65,14 +69,16 @@ spec:
               {{- toYaml $cmItems | nindent 14 }}
         - name: warp-json
           emptyDir: {}
+        - name: error-503
+          emptyDir: {}
       initContainers:
         - name: copy-customhtml
-          image: "{{ .Values.initContainer.repository }}:{{ .Values.initContainer.tag }}"
+          image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
             - -c
-            - >
+            - |
               set -eu;
               SRC=/config;
               DST=/workdir;
@@ -80,11 +86,19 @@ spec:
               if [ "$(ls -A "$SRC" 2>/dev/null || true)" ]; then
                 cp -a "$SRC/." "$DST/";
               fi;
+              SRC="{{ .Values.controllerManager.maintenance.errorPage.dir }}";
+              DST="/tmp/errors";
+              mkdir -p "$DST";
+              if [ -d "$SRC" ]; then
+                cp -r "$SRC/." "$DST/";
+              fi;
           volumeMounts:
             - name: customhtml-src
               mountPath: /config
             - name: customhtml-dst
               mountPath: /workdir
+            - name: error-503
+              mountPath: /tmp/errors
       containers:
       - name: manager
         env:
@@ -104,6 +118,21 @@ spec:
         volumeMounts:
         - name: "warp-json"
           mountPath: {{ quote .Values.controllerManager.warp.mountPath }}
+        env:
+        - name: WATCH_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: WARP_PATH
+          value: {{ quote .Values.controllerManager.warp.mountPath | default "/var/www/html/warp/"}}
+        - name: LOG_LEVEL
+          value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
+      - name: maintenance
+        image: "{{ .Values.controllerManager.maintenance.image.registry }}/{{ .Values.controllerManager.maintenance.image.repository }}:{{ .Values.controllerManager.maintenance.image.tag }}"
+        imagePullPolicy: {{ .Values.controllerManager.maintenance.imagePullPolicy }}
+        volumeMounts:
+        - name: "error-503"
+          mountPath: {{ .Values.controllerManager.maintenance.errorPage.dir }}
         env:
         - name: WATCH_NAMESPACE
           valueFrom:

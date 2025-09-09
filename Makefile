@@ -1,6 +1,7 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-ces-assets
 ARTIFACT_ID_WARP=${ARTIFACT_ID}-warp
+ARTIFACT_ID_MAINTENANCE=${ARTIFACT_ID}-maintenance
 VERSION=0.0.2
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 
@@ -30,6 +31,7 @@ include build/make/k8s-controller.mk
 include build/make/k8s.mk
 
 IMAGE_DEV_WARP=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH)
+IMAGE_DEV_MAINTENANCE=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH)
 
 ##@ Deployment
 
@@ -71,13 +73,16 @@ helm-values-update-image-version: $(BINARY_YQ)
 .PHONY: helm-values-replace-image-repo
 helm-values-replace-image-repo: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
-      		echo "Setting dev image repo in target value.yaml!" ;\
-    		$(BINARY_YQ) -i e ".controllerManager.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-    		$(BINARY_YQ) -i e ".controllerManager.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-    		echo "Setting warp dev image repo in target value.yaml!" ;\
-            $(BINARY_YQ) -i e ".controllerManager.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-            $(BINARY_YQ) -i e ".controllerManager.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-    	fi
+		echo "Setting dev image repo in target value.yaml!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".controllerManager.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		echo "Setting warp dev image repo in target value.yaml!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".controllerManager.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		echo "Setting maintenance dev image repo in target value.yaml!" ;\
+		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.registry=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.repository=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+	fi
 
 .PHONY: kill-operator-pod
 kill-operator-pod:
@@ -100,6 +105,8 @@ print-debug-info: ## Generates info and the list of environment variables requir
 mocks: ${MOCKERY_BIN} ## target is used to generate mocks for all interfaces in a project.
 	cd ${WORKDIR}/warp && ${MOCKERY_BIN}
 	@echo "Mocks successfully created."
+	cd ${WORKDIR}/maintenance && ${MOCKERY_BIN}
+	echo "Mocks successfully created."
 
 .PHONY: docker-build
 docker-build: check-docker-credentials check-k8s-image-env-var ${BINARY_YQ} ## Builds the docker image of the K8s app.
@@ -115,4 +122,9 @@ images-import: ## import images from ces-importer and
 	@make image-import \
 		IMAGE_DIR=./warp \
 		IMAGE=${ARTIFACT_ID_WARP}:${VERSION} \
-		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH):${VERSION} \
+		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH):${VERSION}
+	@echo "Import maintenance assets image"
+	@make image-import \
+		IMAGE_DIR=./maintenance \
+		IMAGE=${ARTIFACT_ID_MAINTENANCE}:${VERSION} \
+		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH):${VERSION}
