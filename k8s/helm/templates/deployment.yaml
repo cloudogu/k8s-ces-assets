@@ -62,7 +62,7 @@ spec:
       volumes:
         - name: customhtml-src
           configMap:
-            name: {{ .Values.initContainer.configMapName }}
+            name: "{{ .Values.initContainer.configMapName }}"
         - name: customhtml-dst
           emptyDir: {}
         - name: app-config
@@ -75,7 +75,6 @@ spec:
         - name: error-503
           emptyDir: {}
       initContainers:
-        {{- /* Init-Container for copying custom-html from Config-Map and error-pages from base image */ -}}
         - name: copy-customhtml
           image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
           imagePullPolicy: IfNotPresent
@@ -116,7 +115,6 @@ spec:
           {{- toYaml $mountItems | nindent 12 }}
         securityContext:
           allowPrivilegeEscalation: false
-      {{- /* Sidecar-Container for creating warp.json */ -}}
       - name: warp
         image: "{{ .Values.controllerManager.warp.image.registry }}/{{ .Values.controllerManager.warp.image.repository }}:{{ .Values.controllerManager.warp.image.tag }}"
         imagePullPolicy: {{ .Values.controllerManager.warp.imagePullPolicy }}
@@ -132,7 +130,6 @@ spec:
           value: {{ quote .Values.controllerManager.warp.mountPath | default "/var/www/html/warp/"}}
         - name: LOG_LEVEL
           value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
-      {{- /* Sidecar-Container for handle maintenance mode */ -}}
       - name: maintenance
         image: "{{ .Values.controllerManager.maintenance.image.registry }}/{{ .Values.controllerManager.maintenance.image.repository }}:{{ .Values.controllerManager.maintenance.image.tag }}"
         imagePullPolicy: {{ .Values.controllerManager.maintenance.imagePullPolicy }}

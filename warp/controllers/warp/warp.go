@@ -159,9 +159,9 @@ func (w *Watcher) handleDoguVersionUpdates(ctx context.Context, versionChannel <
 
 func (w *Watcher) execute(ctx context.Context) error {
 	deployment := &appsv1.Deployment{}
-	err := w.k8sClient.Get(ctx, types2.NamespacedName{Name: "k8s-service-discovery-controller-manager", Namespace: w.namespace}, deployment)
+	err := w.k8sClient.Get(ctx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: w.namespace}, deployment)
 	if err != nil {
-		return fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-service-discovery-controller-manager", err)
+		return fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-controller-manager", err)
 	}
 
 	categories, err := w.ConfigReader.Read(ctx, w.configuration)

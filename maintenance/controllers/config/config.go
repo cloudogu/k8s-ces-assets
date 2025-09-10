@@ -11,7 +11,7 @@ const (
 )
 
 var (
-	logger = ctrl.Log.WithName("k8s-service-discovery.maintenance.config")
+	logger = ctrl.Log.WithName("k8s-ces-assets.maintenance.config")
 )
 
 func ReadWatchNamespace() (string, error) {

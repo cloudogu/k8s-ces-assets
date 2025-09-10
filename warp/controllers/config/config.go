@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	logger = ctrl.Log.WithName("k8s-service-discovery.config")
+	logger = ctrl.Log.WithName("k8s-ces-assets.config")
 )
 
 // Order can be used to modify ordering via configuration
