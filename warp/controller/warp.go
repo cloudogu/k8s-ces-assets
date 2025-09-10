@@ -1,4 +1,4 @@
-package warp
+package controller
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	libconfig "github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/warp/types"
+	"github.com/cloudogu/warp-assets/config"
+	types3 "github.com/cloudogu/warp-assets/controller/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
@@ -46,8 +46,8 @@ func NewWatcher(ctx context.Context, k8sClient client.Client, doguVersionRegistr
 		doguVersionRegistry: doguVersionRegistry,
 		localDoguRepo:       localDoguRepo,
 		configuration:       warpConfig,
-		doguConverter:       &types.DoguConverter{},
-		externalConverter:   &types.ExternalConverter{},
+		doguConverter:       &types3.DoguConverter{},
+		externalConverter:   &types3.ExternalConverter{},
 	}
 
 	return &Watcher{
@@ -159,9 +159,9 @@ func (w *Watcher) handleDoguVersionUpdates(ctx context.Context, versionChannel <
 
 func (w *Watcher) execute(ctx context.Context) error {
 	deployment := &appsv1.Deployment{}
-	err := w.k8sClient.Get(ctx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: w.namespace}, deployment)
+	err := w.k8sClient.Get(ctx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: w.namespace}, deployment)
 	if err != nil {
-		return fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-controller-manager", err)
+		return fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-nginx", err)
 	}
 
 	categories, err := w.ConfigReader.Read(ctx, w.configuration)

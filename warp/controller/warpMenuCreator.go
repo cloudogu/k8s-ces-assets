@@ -1,29 +1,23 @@
-package controllers
+package controller
 
 import (
 	"context"
 	"fmt"
-	"github.com/cloudogu/warp-assets/controllers/warp"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type eventRecorder interface {
-	record.EventRecorder
-}
 
 // warpMenuCreator used to create warp menu
 type warpMenuCreator struct {
 	client              client.Client
-	doguVersionRegistry warp.DoguVersionRegistry
-	localDoguRepo       warp.LocalDoguRepo
+	doguVersionRegistry DoguVersionRegistry
+	localDoguRepo       LocalDoguRepo
 	namespace           string
 	eventRecorder       eventRecorder
-	globalConfig        warp.GlobalConfigRepository
+	globalConfig        GlobalConfigRepository
 }
 
 // NewWarpMenuCreator initialises a creator object to start the warp menu creation
-func NewWarpMenuCreator(client client.Client, doguVersionRegistry warp.DoguVersionRegistry, localDoguRepo warp.LocalDoguRepo, namespace string, recorder eventRecorder, globalConfig warp.GlobalConfigRepository) *warpMenuCreator {
+func NewWarpMenuCreator(client client.Client, doguVersionRegistry DoguVersionRegistry, localDoguRepo LocalDoguRepo, namespace string, recorder eventRecorder, globalConfig GlobalConfigRepository) *warpMenuCreator {
 	return &warpMenuCreator{
 		client:              client,
 		doguVersionRegistry: doguVersionRegistry,
@@ -42,7 +36,7 @@ func (wmc warpMenuCreator) Start(ctx context.Context) error {
 // CreateWarpMenu reads the warp configuration and starts watchers to refresh the menu.json configmap
 // in background.
 func (wmc warpMenuCreator) CreateWarpMenu(ctx context.Context) error {
-	warpWatcher, err := warp.NewWatcher(ctx, wmc.client, wmc.doguVersionRegistry, wmc.localDoguRepo, wmc.namespace, wmc.eventRecorder, wmc.globalConfig)
+	warpWatcher, err := NewWatcher(ctx, wmc.client, wmc.doguVersionRegistry, wmc.localDoguRepo, wmc.namespace, wmc.eventRecorder, wmc.globalConfig)
 	if err != nil {
 		return fmt.Errorf("failed to create warp menu watcher: %w", err)
 	}

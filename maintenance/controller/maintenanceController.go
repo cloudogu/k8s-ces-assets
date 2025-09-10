@@ -1,9 +1,10 @@
-package maintenance
+package controller
 
 import (
 	"context"
 	"fmt"
 	"html/template"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"log"
 	"os"
 
@@ -103,7 +104,7 @@ func renderToFile(t *template.Template, outPath string, data any) error {
 func (r *MaintenanceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.ConfigMap{}, builder.WithPredicates(globalConfigPredicate())).
-		Owns(&corev1.ConfigMap{}, builder.WithPredicates(maintenancePredicate())).
+		WithEventFilter(MaintenanceChangedPredicate()).
 		Complete(r)
 }
 
@@ -113,16 +114,36 @@ func globalConfigPredicate() predicate.Funcs {
 	})
 }
 
-func maintenancePredicate() predicate.Funcs {
+type Config struct {
+	Maintenance string `yaml:"maintenance"`
+}
+
+func MaintenanceChangedPredicate() predicate.Predicate {
 	return predicate.Funcs{
-		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
-			return false
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldCM, ok1 := e.ObjectOld.(*corev1.ConfigMap)
+			newCM, ok2 := e.ObjectNew.(*corev1.ConfigMap)
+			if !ok1 || !ok2 {
+				return false
+			}
+
+			oldCfg := &Config{}
+			newCfg := &Config{}
+
+			if dataOld, ok := oldCM.Data["config.yaml"]; ok {
+				_ = yaml.Unmarshal([]byte(dataOld), oldCfg)
+			}
+			if dataNew, ok := newCM.Data["config.yaml"]; ok {
+				_ = yaml.Unmarshal([]byte(dataNew), newCfg)
+			}
+
+			return oldCfg.Maintenance != newCfg.Maintenance
 		},
-		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
-			return e.Object.GetName() == maintenanceKey
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
 		},
-		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-			return e.ObjectNew.GetName() == maintenanceKey
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
 			return false

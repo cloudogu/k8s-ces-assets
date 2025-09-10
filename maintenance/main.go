@@ -4,9 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/cloudogu/maintenance-assets/controllers/config"
-	"github.com/cloudogu/maintenance-assets/controllers/logging"
-	"github.com/cloudogu/maintenance-assets/controllers/maintenance"
+	"github.com/cloudogu/maintenance-assets/config"
+	maintenance2 "github.com/cloudogu/maintenance-assets/controller"
+	"github.com/cloudogu/maintenance-assets/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -122,8 +122,8 @@ func getK8sManagerOptions(watchNamespace string) manager.Options {
 	}
 }
 
-func handleErrorPageCreation(k8sManager k8sManager, globalConfigRepo maintenance.GlobalConfigRepository) error {
-	maintenanceReconciler := &maintenance.MaintenanceReconciler{
+func handleErrorPageCreation(k8sManager k8sManager, globalConfigRepo maintenance2.GlobalConfigRepository) error {
+	maintenanceReconciler := &maintenance2.MaintenanceReconciler{
 		Client:             k8sManager.GetClient(),
 		GlobalConfigGetter: globalConfigRepo,
 	}

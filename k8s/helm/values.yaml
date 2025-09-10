@@ -50,9 +50,6 @@ controllerManager:
       limits:
         memory: 105M
   maintenance:
-    errorPage:
-      dir: "/var/www/html/errors"
-      name: "503.html"
     env:
       stage: production
       logLevel: info

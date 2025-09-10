@@ -1,4 +1,4 @@
-package warp
+package controller
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	registryconfig "github.com/cloudogu/k8s-registry-lib/config"
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/warp/types"
+	"github.com/cloudogu/warp-assets/config"
+	types2 "github.com/cloudogu/warp-assets/controller/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,11 +31,11 @@ func TestConfigReader_readSupport(t *testing.T) {
 	t.Run("should successfully read support entries without filters", func(t *testing.T) {
 		actual := reader.readSupport(supportSources, false, []string{}, []string{})
 
-		expectedCategories := types.Categories{
-			{Title: "Support", Entries: []types.Entry{
-				{Title: "aboutCloudoguToken", Target: types.TARGET_SELF, Href: "/local/href"},
-				{Title: "myCloudogu", Target: types.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
-				{Title: "docsCloudoguComUrl", Target: types.TARGET_EXTERNAL, Href: "https://docs.cloudogu.com/"},
+		expectedCategories := types2.Categories{
+			{Title: "Support", Entries: []types2.Entry{
+				{Title: "aboutCloudoguToken", Target: types2.TARGET_SELF, Href: "/local/href"},
+				{Title: "myCloudogu", Target: types2.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
+				{Title: "docsCloudoguComUrl", Target: types2.TARGET_EXTERNAL, Href: "https://docs.cloudogu.com/"},
 			}}}
 		assert.Equal(t, expectedCategories, actual)
 	})
@@ -43,16 +43,16 @@ func TestConfigReader_readSupport(t *testing.T) {
 	t.Run("should block all entries", func(t *testing.T) {
 		actual := reader.readSupport(supportSources, true, []string{}, []string{})
 
-		expectedCategories := types.Categories{}
+		expectedCategories := types2.Categories{}
 		assert.Equal(t, expectedCategories, actual)
 	})
 
 	t.Run("should add allowed entries when blocked", func(t *testing.T) {
 		actual := reader.readSupport(supportSources, true, []string{}, []string{"myCloudogu"})
 
-		expectedCategories := types.Categories{
-			{Title: "Support", Entries: []types.Entry{
-				{Title: "myCloudogu", Target: types.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
+		expectedCategories := types2.Categories{
+			{Title: "Support", Entries: []types2.Entry{
+				{Title: "myCloudogu", Target: types2.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
 			}}}
 		assert.Equal(t, expectedCategories, actual)
 	})
@@ -60,9 +60,9 @@ func TestConfigReader_readSupport(t *testing.T) {
 	t.Run("should remove disabled entries when not blocked", func(t *testing.T) {
 		actual := reader.readSupport(supportSources, false, []string{"aboutCloudoguToken", "docsCloudoguComUrl"}, []string{})
 
-		expectedCategories := types.Categories{
-			{Title: "Support", Entries: []types.Entry{
-				{Title: "myCloudogu", Target: types.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
+		expectedCategories := types2.Categories{
+			{Title: "Support", Entries: []types2.Entry{
+				{Title: "myCloudogu", Target: types2.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
 			}}}
 		assert.Equal(t, expectedCategories, actual)
 	})
@@ -70,9 +70,9 @@ func TestConfigReader_readSupport(t *testing.T) {
 	t.Run("should remove disabled entries when not blocked", func(t *testing.T) {
 		actual := reader.readSupport(supportSources, false, []string{"aboutCloudoguToken", "docsCloudoguComUrl"}, []string{})
 
-		expectedCategories := types.Categories{
-			{Title: "Support", Entries: []types.Entry{
-				{Title: "myCloudogu", Target: types.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
+		expectedCategories := types2.Categories{
+			{Title: "Support", Entries: []types2.Entry{
+				{Title: "myCloudogu", Target: types2.TARGET_EXTERNAL, Href: "https://ecosystem.cloudogu.com/"},
 			}}}
 		assert.Equal(t, expectedCategories, actual)
 	})
@@ -228,7 +228,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 
 		mockDoguConverter := NewMockDoguConverter(t)
 
-		cloudoguEntryWithCategory := getEntryWithCategory("Cloudogu", "www.cloudogu.com", "Cloudogu", "External", types.TARGET_EXTERNAL)
+		cloudoguEntryWithCategory := getEntryWithCategory("Cloudogu", "www.cloudogu.com", "Cloudogu", "External", types2.TARGET_EXTERNAL)
 		mockExternalConverter := NewMockExternalConverter(t)
 		mockExternalConverter.EXPECT().ReadAndUnmarshalExternal(mock.Anything).Return(cloudoguEntryWithCategory, nil)
 		reader := &ConfigReader{
@@ -251,7 +251,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		// given
 
 		mockDoguConverter := NewMockDoguConverter(t)
-		mockDoguConverter.EXPECT().CreateEntryWithCategoryFromDogu(readRedmineDogu(t), "warp").Return(types.EntryWithCategory{Entry: types.Entry{DisplayName: "Redmine", Title: "Redmine"}, Category: "Development Apps"}, nil)
+		mockDoguConverter.EXPECT().CreateEntryWithCategoryFromDogu(readRedmineDogu(t), "warp").Return(types2.EntryWithCategory{Entry: types2.Entry{DisplayName: "Redmine", Title: "Redmine"}, Category: "Development Apps"}, nil)
 		mockExternalConverter := NewMockExternalConverter(t)
 		doguSource := config.Source{
 			Path: "/dogu",
@@ -311,7 +311,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		mockDoguConverter := NewMockDoguConverter(t)
 
 		mockExternalConverter := NewMockExternalConverter(t)
-		mockExternalConverter.EXPECT().ReadAndUnmarshalExternal(mock.Anything).Return(types.EntryWithCategory{}, assert.AnError)
+		mockExternalConverter.EXPECT().ReadAndUnmarshalExternal(mock.Anything).Return(types2.EntryWithCategory{}, assert.AnError)
 		reader := &ConfigReader{
 			configuration:     &config.Configuration{Support: []config.SupportSource{}},
 			globalConfigRepo:  mockGlobalConfigRepo,
@@ -342,7 +342,7 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
 
 		mockExternalConverter := NewMockExternalConverter(t)
-		mockExternalConverter.EXPECT().ReadAndUnmarshalExternal(mock.Anything).Return(types.EntryWithCategory{}, assert.AnError)
+		mockExternalConverter.EXPECT().ReadAndUnmarshalExternal(mock.Anything).Return(types2.EntryWithCategory{}, assert.AnError)
 		mockDoguConverter := NewMockDoguConverter(t)
 		reader := &ConfigReader{
 			configuration:     &config.Configuration{Support: []config.SupportSource{}},
@@ -396,12 +396,12 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
 
 		mockConverter := NewMockExternalConverter(t)
-		mockConverter.EXPECT().ReadAndUnmarshalExternal("external").Return(types.EntryWithCategory{
-			Entry: types.Entry{
+		mockConverter.EXPECT().ReadAndUnmarshalExternal("external").Return(types2.EntryWithCategory{
+			Entry: types2.Entry{
 				DisplayName: "ext1",
 				Href:        "https://my.url/ext1",
 				Title:       "ext1 Description",
-				Target:      types.TARGET_EXTERNAL,
+				Target:      types2.TARGET_EXTERNAL,
 			},
 			Category: "Documentation",
 		}, nil)
@@ -418,12 +418,12 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		actual, err := reader.Read(testCtx, &config.Configuration{Sources: testSources, Support: testSupportSoureces})
 		require.NoError(t, err)
 
-		expectedCategories := types.Categories{
-			{Title: "Documentation", Entries: []types.Entry{
-				{DisplayName: "ext1", Title: "ext1 Description", Target: types.TARGET_EXTERNAL, Href: "https://my.url/ext1"},
+		expectedCategories := types2.Categories{
+			{Title: "Documentation", Entries: []types2.Entry{
+				{DisplayName: "ext1", Title: "ext1 Description", Target: types2.TARGET_EXTERNAL, Href: "https://my.url/ext1"},
 			}},
-			{Title: "Support", Entries: []types.Entry{
-				{Title: "supportSrc", Target: types.TARGET_EXTERNAL, Href: "https://support.source"},
+			{Title: "Support", Entries: []types2.Entry{
+				{Title: "supportSrc", Target: types2.TARGET_EXTERNAL, Href: "https://support.source"},
 			}},
 		}
 		assert.Equal(t, expectedCategories, actual)
@@ -438,8 +438,8 @@ func TestConfigReader_dogusReader(t *testing.T) {
 			Type: "dogus",
 			Tag:  "warp",
 		}
-		redmineEntryWithCategory := getEntryWithCategory("Redmine", "/redmine", "Redmine", "Development Apps", types.TARGET_SELF)
-		jenkinsEntryWithCategory := getEntryWithCategory("Jenkins", "/jenkins", "Jenkins", "Development Apps", types.TARGET_SELF)
+		redmineEntryWithCategory := getEntryWithCategory("Redmine", "/redmine", "Redmine", "Development Apps", types2.TARGET_SELF)
+		jenkinsEntryWithCategory := getEntryWithCategory("Jenkins", "/jenkins", "Jenkins", "Development Apps", types2.TARGET_SELF)
 		mockDoguConverter := NewMockDoguConverter(t)
 		mockDoguConverter.EXPECT().CreateEntryWithCategoryFromDogu(readRedmineDogu(t), "warp").Return(redmineEntryWithCategory, nil)
 		mockDoguConverter.EXPECT().CreateEntryWithCategoryFromDogu(readJenkinsDogu(t), "warp").Return(jenkinsEntryWithCategory, nil)
@@ -519,8 +519,8 @@ func TestConfigReader_dogusReader(t *testing.T) {
 		assert.Contains(t, err.Error(), "failed to get all dogu specs with current versions")
 	})
 }
-func getEntryWithCategory(displayName string, href string, title string, category string, target types.Target) types.EntryWithCategory {
-	return types.EntryWithCategory{Entry: types.Entry{
+func getEntryWithCategory(displayName string, href string, title string, category string, target types2.Target) types2.EntryWithCategory {
+	return types2.EntryWithCategory{Entry: types2.Entry{
 		DisplayName: displayName,
 		Href:        href,
 		Title:       title,

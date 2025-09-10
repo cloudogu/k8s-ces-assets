@@ -1,12 +1,12 @@
-package warp
+package controller
 
 import (
 	"context"
 	_ "embed"
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/warp/types"
+	"github.com/cloudogu/warp-assets/config"
+	types3 "github.com/cloudogu/warp-assets/controller/types"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -95,12 +95,12 @@ func TestWatcher_Run(t *testing.T) {
 		k8sClientMock := newMockK8sClient(t)
 		configReaderMock := NewMockReader(t)
 		eventRecorderMock := newMockEventRecorder(t)
-		k8sClientMock.EXPECT().Get(testCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(nil)
-		categories := types.Categories{
+		k8sClientMock.EXPECT().Get(testCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
+		categories := types3.Categories{
 			{
 				Title: "Administration Apps",
 				Order: 100,
-				Entries: types.Entries{
+				Entries: types3.Entries{
 					{
 						DisplayName: "Admin",
 						Href:        "/admin",
@@ -138,7 +138,7 @@ func TestWatcher_Run(t *testing.T) {
 	t.Run("should log error in initial run", func(t *testing.T) {
 		// given
 		k8sClientMock := newMockK8sClient(t)
-		k8sClientMock.EXPECT().Get(testCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(assert.AnError)
+		k8sClientMock.EXPECT().Get(testCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(assert.AnError)
 
 		mockLogSink := NewMockLogSink(t)
 		oldLogFn := log.FromContext
@@ -180,12 +180,12 @@ func TestWatcher_Run(t *testing.T) {
 		configReaderMock := NewMockReader(t)
 		eventRecorderMock := newMockEventRecorder(t)
 		versionRegistryMock := NewMockDoguVersionRegistry(t)
-		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(nil)
-		categories := types.Categories{
+		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
+		categories := types3.Categories{
 			{
 				Title: "Administration Apps",
 				Order: 100,
-				Entries: types.Entries{
+				Entries: types3.Entries{
 					{
 						DisplayName: "Admin",
 						Href:        "/admin",
@@ -244,12 +244,12 @@ func TestWatcher_Run(t *testing.T) {
 		configReaderMock := NewMockReader(t)
 		eventRecorderMock := newMockEventRecorder(t)
 		globalConfigMock := NewMockGlobalConfigRepository(t)
-		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(nil)
-		categories := types.Categories{
+		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
+		categories := types3.Categories{
 			{
 				Title: "Administration Apps",
 				Order: 100,
-				Entries: types.Entries{
+				Entries: types3.Entries{
 					{
 						DisplayName: "Admin",
 						Href:        "/admin",
@@ -419,7 +419,7 @@ func TestWatcher_handleGlobalConfigUpdates(t *testing.T) {
 		cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
 		k8sClientMock := newMockK8sClient(t)
-		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(nil)
+		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
 
 		configReaderMock := NewMockReader(t)
 		configReaderMock.EXPECT().Read(cancelCtx, mock.Anything).Return(nil, assert.AnError)
@@ -530,7 +530,7 @@ func TestWatcher_handleDoguVersionUpdates(t *testing.T) {
 		cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
 		k8sClientMock := newMockK8sClient(t)
-		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-controller-manager", Namespace: testNamespace}, mock.Anything).Return(nil)
+		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
 
 		configReaderMock := NewMockReader(t)
 		configReaderMock.EXPECT().Read(cancelCtx, mock.Anything).Return(nil, assert.AnError)

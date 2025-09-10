@@ -1,16 +1,16 @@
-package warp
+package controller
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
 	libconfig "github.com/cloudogu/k8s-registry-lib/config"
+	types2 "github.com/cloudogu/warp-assets/controller/types"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/warp/types"
+	"github.com/cloudogu/warp-assets/config"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/pkg/errors"
@@ -31,8 +31,8 @@ const globalDisabledWarpSupportEntriesConfigurationKey = "disabled_warpmenu_supp
 const globalAllowedWarpSupportEntriesConfigurationKey = "allowed_warpmenu_support_entries"
 
 // Read reads sources specified in a configuration and build warp menu categories for them.
-func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Configuration) (types.Categories, error) {
-	var data types.Categories
+func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Configuration) (types2.Categories, error) {
+	var data types2.Categories
 
 	for _, source := range configuration.Sources {
 		// Disabled support entries refresh every time
@@ -71,7 +71,7 @@ func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Conf
 	return data, nil
 }
 
-func (reader *ConfigReader) readSource(ctx context.Context, source config.Source) (types.Categories, error) {
+func (reader *ConfigReader) readSource(ctx context.Context, source config.Source) (types2.Categories, error) {
 	switch source.Type {
 	case "dogus":
 		return reader.dogusReader(ctx, source)
@@ -81,13 +81,13 @@ func (reader *ConfigReader) readSource(ctx context.Context, source config.Source
 	return nil, errors.Errorf("wrong source type: %v", source.Type)
 }
 
-func (reader *ConfigReader) externalsReader(ctx context.Context, source config.Source) (types.Categories, error) {
+func (reader *ConfigReader) externalsReader(ctx context.Context, source config.Source) (types2.Categories, error) {
 	ctrl.Log.Info(fmt.Sprintf("Read externals from %s for warp menu in global config", source.Path))
 	children, err := reader.readGlobalConfigDir(ctx, removeLegacyGlobalConfigPrefix(source.Path))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read root entry %s from config: %w", source.Path, err)
 	}
-	var externals []types.EntryWithCategory
+	var externals []types2.EntryWithCategory
 	for _, value := range children {
 		external, unmarshalErr := reader.externalConverter.ReadAndUnmarshalExternal(value)
 		if unmarshalErr != nil {
@@ -118,7 +118,7 @@ func (reader *ConfigReader) readGlobalConfigDir(ctx context.Context, key string)
 
 // dogusReader reads from dogu repository and converts the keys and values to a warp menu
 // conform structure
-func (reader *ConfigReader) dogusReader(ctx context.Context, source config.Source) (types.Categories, error) {
+func (reader *ConfigReader) dogusReader(ctx context.Context, source config.Source) (types2.Categories, error) {
 	ctrl.Log.Info(fmt.Sprintf("Read dogus from %s for warp menu", source.Path))
 	allCurrentDoguVersions, err := reader.doguVersionRegistry.GetCurrentOfAll(ctx)
 	if err != nil {
@@ -126,7 +126,7 @@ func (reader *ConfigReader) dogusReader(ctx context.Context, source config.Sourc
 	}
 
 	if len(allCurrentDoguVersions) == 0 {
-		return []*types.Category{}, nil
+		return []*types2.Category{}, nil
 	}
 
 	allCurrentDogus, err := reader.localDoguRepo.GetAll(ctx, allCurrentDoguVersions)
@@ -134,7 +134,7 @@ func (reader *ConfigReader) dogusReader(ctx context.Context, source config.Sourc
 		return nil, fmt.Errorf("failed to get all dogu specs with current versions: %w", err)
 	}
 
-	var doguCategories []types.EntryWithCategory
+	var doguCategories []types2.EntryWithCategory
 	for _, currentDogu := range allCurrentDogus {
 		doguCategory, err := reader.doguConverter.CreateEntryWithCategoryFromDogu(currentDogu, source.Tag)
 		if err == nil && doguCategory.Entry.Title != "" {
@@ -203,35 +203,35 @@ func (reader *ConfigReader) readBool(ctx context.Context, registryKey string) (b
 	return boolValue, nil
 }
 
-func (reader *ConfigReader) readSupport(supportSources []config.SupportSource, blocked bool, disabledEntries []string, allowedEntries []string) types.Categories {
-	var supportEntries []types.EntryWithCategory
+func (reader *ConfigReader) readSupport(supportSources []config.SupportSource, blocked bool, disabledEntries []string, allowedEntries []string) types2.Categories {
+	var supportEntries []types2.EntryWithCategory
 
 	for _, supportSource := range supportSources {
 		if (blocked && StringInSlice(supportSource.Identifier, allowedEntries)) || (!blocked && !StringInSlice(supportSource.Identifier, disabledEntries)) {
 			// support category is blocked, but this entry is explicitly allowed OR support category is NOT blocked and this entry is NOT explicitly disabled
 
-			entry := types.Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: types.TARGET_SELF}
+			entry := types2.Entry{Title: supportSource.Identifier, Href: supportSource.Href, Target: types2.TARGET_SELF}
 			if supportSource.External {
-				entry.Target = types.TARGET_EXTERNAL
+				entry.Target = types2.TARGET_EXTERNAL
 			}
 
-			supportEntries = append(supportEntries, types.EntryWithCategory{Entry: entry, Category: "Support"})
+			supportEntries = append(supportEntries, types2.EntryWithCategory{Entry: entry, Category: "Support"})
 		}
 	}
 
 	return reader.createCategories(supportEntries)
 }
 
-func (reader *ConfigReader) createCategories(entries []types.EntryWithCategory) types.Categories {
-	categories := map[string]*types.Category{}
+func (reader *ConfigReader) createCategories(entries []types2.EntryWithCategory) types2.Categories {
+	categories := map[string]*types2.Category{}
 
 	for _, entry := range entries {
 		categoryName := entry.Category
 		category := categories[categoryName]
 		if category == nil {
-			category = &types.Category{
+			category = &types2.Category{
 				Title:   categoryName,
-				Entries: types.Entries{},
+				Entries: types2.Entries{},
 				Order:   reader.configuration.Order[categoryName],
 			}
 			categories[categoryName] = category
@@ -239,7 +239,7 @@ func (reader *ConfigReader) createCategories(entries []types.EntryWithCategory) 
 		category.Entries = append(category.Entries, entry.Entry)
 	}
 
-	result := types.Categories{}
+	result := types2.Categories{}
 	for _, cat := range categories {
 		sort.Sort(cat.Entries)
 		result = append(result, cat)

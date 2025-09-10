@@ -1,4 +1,4 @@
-package warp
+package controller
 
 import (
 	"context"
@@ -6,15 +6,15 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	libconfig "github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/warp/types"
+	"github.com/cloudogu/warp-assets/config"
+	types2 "github.com/cloudogu/warp-assets/controller/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Reader is used to fetch warp categories with a configuration
 type Reader interface {
-	Read(context.Context, *config.Configuration) (types.Categories, error)
+	Read(context.Context, *config.Configuration) (types2.Categories, error)
 }
 
 type eventRecorder interface {
@@ -23,12 +23,12 @@ type eventRecorder interface {
 
 // DoguConverter is used to Read dogus from the registry and convert them to objects fitting in the warp menu
 type DoguConverter interface {
-	CreateEntryWithCategoryFromDogu(dogu *core.Dogu, tag string) (types.EntryWithCategory, error)
+	CreateEntryWithCategoryFromDogu(dogu *core.Dogu, tag string) (types2.EntryWithCategory, error)
 }
 
 // ExternalConverter is used to Read external links from the registry and convert them to objects fitting in the warp menu
 type ExternalConverter interface {
-	ReadAndUnmarshalExternal(link string) (types.EntryWithCategory, error)
+	ReadAndUnmarshalExternal(link string) (types2.EntryWithCategory, error)
 }
 
 type DoguVersionRegistry interface {

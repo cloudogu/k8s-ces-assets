@@ -35,12 +35,12 @@
 {{- /* Volume--Mount for sharing error-pages between manager and maintenance-sidecard */ -}}
 {{- $mountItems = append $mountItems (dict
         "name"      "error-503"
-        "mountPath" (printf "%s" .Values.controllerManager.maintenance.errorPage.dir)) -}}
+        "mountPath" "/var/www/html/errors") -}}
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "k8s-ces-assets.name" . }}-controller-manager
+  name: {{ include "k8s-ces-assets.name" . }}-nginx
   labels:
   {{- include "k8s-ces-assets.labels" . | nindent 4 }}
 spec:
@@ -89,7 +89,7 @@ spec:
               if [ "$(ls -A "$SRC" 2>/dev/null || true)" ]; then
                 cp -a "$SRC/." "$DST/";
               fi;
-              SRC="{{ .Values.controllerManager.maintenance.errorPage.dir }}";
+              SRC="/var/www/html/errors";
               DST="/tmp/errors";
               mkdir -p "$DST";
               if [ -d "$SRC" ]; then
@@ -135,17 +135,15 @@ spec:
         imagePullPolicy: {{ .Values.controllerManager.maintenance.imagePullPolicy }}
         volumeMounts:
         - name: "error-503"
-          mountPath: {{ .Values.controllerManager.maintenance.errorPage.dir }}
+          mountPath: "/var/www/html/errors"
         env:
         - name: WATCH_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - name: WARP_PATH
-          value: {{ quote .Values.controllerManager.warp.mountPath | default "/var/www/html/warp/"}}
         - name: LOG_LEVEL
           value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
       securityContext:
         runAsNonRoot: false
-      serviceAccountName: {{ include "k8s-ces-assets.name" . }}-controller-manager
+      serviceAccountName: {{ include "k8s-ces-assets.name" . }}-nginx
       terminationGracePeriodSeconds: 10

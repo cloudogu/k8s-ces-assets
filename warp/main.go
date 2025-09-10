@@ -4,10 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	"github.com/cloudogu/warp-assets/controllers"
-	"github.com/cloudogu/warp-assets/controllers/config"
-	"github.com/cloudogu/warp-assets/controllers/logging"
-	"github.com/cloudogu/warp-assets/controllers/warp"
+	"github.com/cloudogu/warp-assets/config"
+	warp2 "github.com/cloudogu/warp-assets/controller"
+	"github.com/cloudogu/warp-assets/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -70,7 +69,7 @@ func startManager() error {
 		return fmt.Errorf("failed to create new manager: %w", err)
 	}
 
-	eventRecorder := serviceDiscManager.GetEventRecorderFor("k8s-ces-assets-controller-manager")
+	eventRecorder := serviceDiscManager.GetEventRecorderFor("k8s-ces-assets-nginx")
 
 	clientset, err := getK8sClientSet(serviceDiscManager.GetConfig())
 	if err != nil {
@@ -132,8 +131,8 @@ func getK8sManagerOptions(watchNamespace string) manager.Options {
 	}
 }
 
-func handleWarpMenuCreation(k8sManager k8sManager, doguVersionRegistry warp.DoguVersionRegistry, localDoguRepo warp.LocalDoguRepo, namespace string, recorder record.EventRecorder, globalConfigRepo warp.GlobalConfigRepository) error {
-	warpMenuCreator := controllers.NewWarpMenuCreator(k8sManager.GetClient(), doguVersionRegistry, localDoguRepo, namespace, recorder, globalConfigRepo)
+func handleWarpMenuCreation(k8sManager k8sManager, doguVersionRegistry warp2.DoguVersionRegistry, localDoguRepo warp2.LocalDoguRepo, namespace string, recorder record.EventRecorder, globalConfigRepo warp2.GlobalConfigRepository) error {
+	warpMenuCreator := warp2.NewWarpMenuCreator(k8sManager.GetClient(), doguVersionRegistry, localDoguRepo, namespace, recorder, globalConfigRepo)
 
 	if err := k8sManager.Add(warpMenuCreator); err != nil {
 		return fmt.Errorf("failed to add warp menu creator as runnable to the manager: %w", err)
