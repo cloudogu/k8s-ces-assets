@@ -1,6 +1,6 @@
 apiVersion: v2
 name: k8s-ces-assets
-description: "Apply changes to FQDN, internal IP and additional hosts in a K8s Cloudogu EcoSystem."
+description: "Provides a webserver to tether static content into the Cloudogu EcoSystem"
 
 # A chart can be either an 'application' or a 'library' chart.
 #

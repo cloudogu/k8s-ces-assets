@@ -35,17 +35,6 @@ IMAGE_DEV_MAINTENANCE=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_I
 
 ##@ Deployment
 
-.PHONY: helm-repo-config
-helm-repo-config: ## Creates a configMap and a secret for the helm repo connection from env var HELM_REPO_ENDPOINT and either HELM_REPO_USERNAME & HELM_REPO_PASSWORD or HELM_AUTH_BASE64.
-	@kubectl create configmap debug-mode-operator-helm-repository --namespace=ecosystem --from-literal=endpoint=${HELM_REPO_ENDPOINT} --from-literal=schema=oci --from-literal=plainHttp=${HELM_REPO_PLAIN_HTTP}
-	@if [ -z ${HELM_AUTH_BASE64} ]; then \
-	  	echo "Using fields HELM_REPO_USERNAME & HELM_REPO_PASSWORD to create secret!" ;\
-		kubectl create secret generic debug-mode-operator-helm-registry --namespace=ecosystem --from-literal=config.json='{"auths": {"${HELM_REPO_ENDPOINT}": {"auth": "$(shell printf "%s:%s" "${HELM_REPO_USERNAME}" "${HELM_REPO_PASSWORD}" | base64 -w0)"}}}' ;\
-	else \
-		echo "Using field HELM_AUTH_BASE64 to create secret!" ;\
-		kubectl create secret generic debug-mode-operator-helm-registry --namespace=ecosystem --from-literal=config.json='{"auths": {"${HELM_REPO_ENDPOINT}": {"auth": "${HELM_AUTH_BASE64}"}}}' ;\
-	fi
-
 .PHONY: template-stage
 template-stage: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
@@ -83,21 +72,6 @@ helm-values-replace-image-repo: $(BINARY_YQ)
 		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.registry=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.repository=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
-
-.PHONY: kill-operator-pod
-kill-operator-pod:
-	@echo "Restarting k8s-dogu-operator!"
-	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=${ARTIFACT_ID}'
-
-.PHONY: build-boot
-build-boot: crd-helm-apply helm-apply kill-operator-pod ## Builds a new version of the operator and deploys it into the K8s-EcoSystem.
-
-##@ Debug
-
-.PHONY: print-debug-info
-print-debug-info: ## Generates info and the list of environment variables required to start the operator in debug mode.
-	@echo "The target generates a list of env variables required to start the operator in debug mode. These can be pasted directly into the 'go build' run configuration in IntelliJ to run and debug the operator on-demand."
-	@echo "STAGE=$(STAGE);LOG_LEVEL=$(LOG_LEVEL);KUBECONFIG=$(KUBECONFIG);NAMESPACE=$(NAMESPACE);"
 
 # Custom targets:
 
