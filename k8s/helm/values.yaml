@@ -13,7 +13,7 @@ ingress:
 initContainer:
   customHtmlMountPath: "/var/www/customhtml/"
   configMapName: "k8s-ces-assets-customhtml"
-controllerManager:
+nginx:
   manager:
     env:
       stage: production

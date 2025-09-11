@@ -39,38 +39,38 @@ IMAGE_DEV_MAINTENANCE=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_I
 template-stage: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
   		echo "Setting STAGE env in deployment to ${STAGE}!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.env.stage=\"${STAGE}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.env.stage=\"${STAGE}\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
 
 .PHONY: template-log-level
 template-log-level: $(BINARY_YQ)
 	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
-	@$(BINARY_YQ) -i e ".controllerManager.env.logLevel=\"${LOG_LEVEL}\"" ${K8S_COMPONENT_TARGET_VALUES}
+	@$(BINARY_YQ) -i e ".nginx.env.logLevel=\"${LOG_LEVEL}\"" ${K8S_COMPONENT_TARGET_VALUES}
 
 .PHONY: template-image-pull-policy
 template-image-pull-policy: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
   		echo "Setting PULL POLICY to always!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.imagePullPolicy=\"Always\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.imagePullPolicy=\"Always\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
 
 .PHONY: helm-values-update-image-version
 helm-values-update-image-version: $(BINARY_YQ)
 	@echo "Updating the image version in source value.yaml to ${VERSION}..."
-	@$(BINARY_YQ) -i e ".controllerManager.manager.image.tag = \"${VERSION}\"" ${K8S_COMPONENT_SOURCE_VALUES}
+	@$(BINARY_YQ) -i e ".nginx.manager.image.tag = \"${VERSION}\"" ${K8S_COMPONENT_SOURCE_VALUES}
 
 .PHONY: helm-values-replace-image-repo
 helm-values-replace-image-repo: $(BINARY_YQ)
 	@if [[ ${STAGE} == "development" ]]; then \
 		echo "Setting dev image repo in target value.yaml!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-		$(BINARY_YQ) -i e ".controllerManager.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		echo "Setting warp dev image repo in target value.yaml!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-		$(BINARY_YQ) -i e ".controllerManager.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		echo "Setting maintenance dev image repo in target value.yaml!" ;\
-		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.registry=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-		$(BINARY_YQ) -i e ".controllerManager.maintenance.image.repository=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.maintenance.image.registry=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
+		$(BINARY_YQ) -i e ".nginx.maintenance.image.repository=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
 
 # Custom targets:

@@ -30,7 +30,7 @@
 {{- /* Volume--Mount for sharing warp-json between manager and warp-sidecard */ -}}
 {{- $mountItems = append $mountItems (dict
         "name"      "warp-json"
-        "mountPath" .Values.controllerManager.warp.mountPath) -}}
+        "mountPath" .Values.nginx.warp.mountPath) -}}
 
 {{- /* Volume--Mount for sharing error-pages between manager and maintenance-sidecard */ -}}
 {{- $mountItems = append $mountItems (dict
@@ -76,7 +76,7 @@ spec:
           emptyDir: {}
       initContainers:
         - name: copy-customhtml
-          image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
+          image: "{{ .Values.nginx.manager.image.registry }}/{{ .Values.nginx.manager.image.repository }}:{{ .Values.nginx.manager.image.tag }}"
           imagePullPolicy: IfNotPresent
           command:
             - /bin/sh
@@ -106,33 +106,33 @@ spec:
       - name: manager
         env:
         - name: STAGE
-          value: {{ quote .Values.controllerManager.manager.env.stage | default "production" }}
+          value: {{ quote .Values.nginx.manager.env.stage | default "production" }}
         - name: LOG_LEVEL
-          value: {{ quote .Values.controllerManager.manager.env.logLevel | default "info"}}
-        image: "{{ .Values.controllerManager.manager.image.registry }}/{{ .Values.controllerManager.manager.image.repository }}:{{ .Values.controllerManager.manager.image.tag }}"
-        imagePullPolicy: {{ .Values.controllerManager.manager.imagePullPolicy }}
+          value: {{ quote .Values.nginx.manager.env.logLevel | default "info"}}
+        image: "{{ .Values.nginx.manager.image.registry }}/{{ .Values.nginx.manager.image.repository }}:{{ .Values.nginx.manager.image.tag }}"
+        imagePullPolicy: {{ .Values.nginx.manager.imagePullPolicy }}
         volumeMounts:
           {{- toYaml $mountItems | nindent 12 }}
         securityContext:
           allowPrivilegeEscalation: false
       - name: warp
-        image: "{{ .Values.controllerManager.warp.image.registry }}/{{ .Values.controllerManager.warp.image.repository }}:{{ .Values.controllerManager.warp.image.tag }}"
-        imagePullPolicy: {{ .Values.controllerManager.warp.imagePullPolicy }}
+        image: "{{ .Values.nginx.warp.image.registry }}/{{ .Values.nginx.warp.image.repository }}:{{ .Values.nginx.warp.image.tag }}"
+        imagePullPolicy: {{ .Values.nginx.warp.imagePullPolicy }}
         volumeMounts:
         - name: "warp-json"
-          mountPath: {{ quote .Values.controllerManager.warp.mountPath }}
+          mountPath: {{ quote .Values.nginx.warp.mountPath }}
         env:
         - name: WATCH_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
         - name: WARP_PATH
-          value: {{ quote .Values.controllerManager.warp.mountPath | default "/var/www/html/warp/"}}
+          value: {{ quote .Values.nginx.warp.mountPath | default "/var/www/html/warp/"}}
         - name: LOG_LEVEL
-          value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
+          value: {{ quote .Values.nginx.warp.env.logLevel | default "info"}}
       - name: maintenance
-        image: "{{ .Values.controllerManager.maintenance.image.registry }}/{{ .Values.controllerManager.maintenance.image.repository }}:{{ .Values.controllerManager.maintenance.image.tag }}"
-        imagePullPolicy: {{ .Values.controllerManager.maintenance.imagePullPolicy }}
+        image: "{{ .Values.nginx.maintenance.image.registry }}/{{ .Values.nginx.maintenance.image.repository }}:{{ .Values.nginx.maintenance.image.tag }}"
+        imagePullPolicy: {{ .Values.nginx.maintenance.imagePullPolicy }}
         volumeMounts:
         - name: "error-503"
           mountPath: "/var/www/html/errors"
@@ -142,7 +142,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: LOG_LEVEL
-          value: {{ quote .Values.controllerManager.warp.env.logLevel | default "info"}}
+          value: {{ quote .Values.nginx.warp.env.logLevel | default "info"}}
       securityContext:
         runAsNonRoot: false
       serviceAccountName: {{ include "k8s-ces-assets.name" . }}-nginx
