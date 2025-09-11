@@ -14,8 +14,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	"os"
+	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -91,6 +91,8 @@ var testNamespace = "test"
 func TestWatcher_Run(t *testing.T) {
 	t.Run("success of the initial run", func(t *testing.T) {
 		// given
+		tmpDir := t.TempDir()
+		t.Setenv("WARP_PATH", tmpDir)
 		testConfiguration := &config.Configuration{}
 		k8sClientMock := newMockK8sClient(t)
 		configReaderMock := NewMockReader(t)
@@ -111,13 +113,6 @@ func TestWatcher_Run(t *testing.T) {
 			},
 		}
 		configReaderMock.EXPECT().Read(testCtx, testConfiguration).Return(categories, nil)
-		k8sClientMock.EXPECT().Get(testCtx, client.ObjectKey{Name: config.MenuConfigMap, Namespace: testNamespace}, mock.Anything).RunAndReturn(func(ctx context.Context, name types2.NamespacedName, object client.Object, option ...client.GetOption) error {
-			menuJsonCm := object.(*corev1.ConfigMap)
-			menuJsonCm.Data = map[string]string{}
-			return nil
-		})
-		expectedMenuJsonCm := &corev1.ConfigMap{Data: map[string]string{"menu.json": "[{\"Title\":\"Administration Apps\",\"Order\":100,\"Entries\":[{\"DisplayName\":\"Admin\",\"Href\":\"/admin\",\"Title\":\"Admin\",\"Target\":\"self\"}]}]"}}
-		k8sClientMock.EXPECT().Update(testCtx, expectedMenuJsonCm).Return(nil)
 		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, "WarpMenu", "Warp menu updated.")
 
 		sut := Watcher{
@@ -128,11 +123,20 @@ func TestWatcher_Run(t *testing.T) {
 			eventRecorder: eventRecorderMock,
 		}
 
+		expectedJson := "[{\"Title\":\"Administration Apps\",\"Order\":100,\"Entries\":[{\"DisplayName\":\"Admin\",\"Href\":\"/admin\",\"Title\":\"Admin\",\"Target\":\"self\"}]}]"
+
 		// when
 		err := sut.Run(testCtx)
 
+		menujson := filepath.Join(tmpDir, "menu.json")
+		data, err := os.ReadFile(menujson)
+		if err != nil {
+			t.Fail()
+		}
+
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, expectedJson, string(data))
 	})
 
 	t.Run("should log error in initial run", func(t *testing.T) {
@@ -166,6 +170,8 @@ func TestWatcher_Run(t *testing.T) {
 
 	t.Run("success with a dogu source", func(t *testing.T) {
 		// given
+		tmpDir := t.TempDir()
+		t.Setenv("WARP_PATH", tmpDir)
 		cancelCtx, cancelFunc := context.WithCancel(context.Background())
 		testConfiguration := &config.Configuration{
 			Sources: []config.Source{
@@ -196,13 +202,7 @@ func TestWatcher_Run(t *testing.T) {
 			},
 		}
 		configReaderMock.EXPECT().Read(cancelCtx, testConfiguration).Return(categories, nil)
-		k8sClientMock.EXPECT().Get(cancelCtx, client.ObjectKey{Name: config.MenuConfigMap, Namespace: testNamespace}, mock.Anything).RunAndReturn(func(ctx context.Context, name types2.NamespacedName, object client.Object, option ...client.GetOption) error {
-			menuJsonCm := object.(*corev1.ConfigMap)
-			menuJsonCm.Data = map[string]string{}
-			return nil
-		})
-		expectedMenuJsonCm := &corev1.ConfigMap{Data: map[string]string{"menu.json": "[{\"Title\":\"Administration Apps\",\"Order\":100,\"Entries\":[{\"DisplayName\":\"Admin\",\"Href\":\"/admin\",\"Title\":\"Admin\",\"Target\":\"self\"}]}]"}}
-		k8sClientMock.EXPECT().Update(cancelCtx, expectedMenuJsonCm).Return(nil)
+
 		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, "WarpMenu", "Warp menu updated.").Times(1)
 		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, "WarpMenu", "Warp menu updated.").Times(1).Run(func(args mock.Arguments) {
 			cancelFunc()
@@ -219,77 +219,21 @@ func TestWatcher_Run(t *testing.T) {
 			eventRecorder:   eventRecorderMock,
 			registryToWatch: versionRegistryMock,
 		}
+		expectedJson := "[{\"Title\":\"Administration Apps\",\"Order\":100,\"Entries\":[{\"DisplayName\":\"Admin\",\"Href\":\"/admin\",\"Title\":\"Admin\",\"Target\":\"self\"}]}]"
 
 		// when
 		err := sut.Run(cancelCtx)
 		resultChannel <- dogu.CurrentVersionsWatchResult{}
 
-		// then
-		require.NoError(t, err)
-		<-cancelCtx.Done()
-	})
-
-	t.Run("success with a config source", func(t *testing.T) {
-		// given
-		cancelCtx, cancelFunc := context.WithCancel(context.Background())
-		testConfiguration := &config.Configuration{
-			Sources: []config.Source{
-				{
-					Path: "externals",
-					Type: "externals",
-				},
-			},
+		menujson := filepath.Join(tmpDir, "menu.json")
+		data, err := os.ReadFile(menujson)
+		if err != nil {
+			t.Fail()
 		}
-		k8sClientMock := newMockK8sClient(t)
-		configReaderMock := NewMockReader(t)
-		eventRecorderMock := newMockEventRecorder(t)
-		globalConfigMock := NewMockGlobalConfigRepository(t)
-		k8sClientMock.EXPECT().Get(cancelCtx, types2.NamespacedName{Name: "k8s-ces-assets-nginx", Namespace: testNamespace}, mock.Anything).Return(nil)
-		categories := types3.Categories{
-			{
-				Title: "Administration Apps",
-				Order: 100,
-				Entries: types3.Entries{
-					{
-						DisplayName: "Admin",
-						Href:        "/admin",
-						Title:       "Admin",
-						Target:      1,
-					},
-				},
-			},
-		}
-		configReaderMock.EXPECT().Read(cancelCtx, testConfiguration).Return(categories, nil)
-		k8sClientMock.EXPECT().Get(cancelCtx, client.ObjectKey{Name: config.MenuConfigMap, Namespace: testNamespace}, mock.Anything).RunAndReturn(func(ctx context.Context, name types2.NamespacedName, object client.Object, option ...client.GetOption) error {
-			menuJsonCm := object.(*corev1.ConfigMap)
-			menuJsonCm.Data = map[string]string{}
-			return nil
-		})
-		expectedMenuJsonCm := &corev1.ConfigMap{Data: map[string]string{"menu.json": "[{\"Title\":\"Administration Apps\",\"Order\":100,\"Entries\":[{\"DisplayName\":\"Admin\",\"Href\":\"/admin\",\"Title\":\"Admin\",\"Target\":\"self\"}]}]"}}
-		k8sClientMock.EXPECT().Update(cancelCtx, expectedMenuJsonCm).Return(nil)
-		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, "WarpMenu", "Warp menu updated.").Times(1)
-		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, "WarpMenu", "Warp menu updated.").Times(1).Run(func(args mock.Arguments) {
-			cancelFunc()
-		})
-
-		resultChannel := make(chan repository.GlobalConfigWatchResult)
-		globalConfigMock.EXPECT().Watch(cancelCtx, mock.Anything).Return(resultChannel, nil)
-
-		sut := Watcher{
-			k8sClient:        k8sClientMock,
-			ConfigReader:     configReaderMock,
-			configuration:    testConfiguration,
-			namespace:        testNamespace,
-			eventRecorder:    eventRecorderMock,
-			globalConfigRepo: globalConfigMock,
-		}
-
-		// when
-		err := sut.Run(cancelCtx)
-		resultChannel <- repository.GlobalConfigWatchResult{}
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, expectedJson, string(data))
 		<-cancelCtx.Done()
 	})
 }

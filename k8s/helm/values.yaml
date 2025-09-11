@@ -1,9 +1,6 @@
 global:
   imagePullSecrets:
     - name: "ces-container-registries"
-service:
-  port: 80
-  targetPort: 80
 ingress:
   className: "k8s-ecosystem-ces-service"
   host: ""
@@ -11,8 +8,8 @@ ingress:
   pathType: "Prefix"
   annotations: {}
 initContainer:
-  customHtmlMountPath: "/var/www/customhtml/"
-  configMapName: "k8s-ces-assets-customhtml"
+  customHtmlMountPath: "/var/www/html/customhtml/"
+  configMaps: []
 nginx:
   manager:
     env:

@@ -30,6 +30,7 @@ include build/make/mocks.mk
 include build/make/k8s-controller.mk
 include build/make/k8s.mk
 
+PACKAGES=$(shell go list ./warp/... ./maintenance/...)
 IMAGE_DEV_WARP=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH)
 IMAGE_DEV_MAINTENANCE=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH)
 

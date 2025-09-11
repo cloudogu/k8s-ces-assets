@@ -22,4 +22,4 @@ spec:
               service:
                 name: {{ include "k8s-ces-assets.name" . }}-service
                 port:
-                  number: {{ .Values.service.port }}
+                  number: 80

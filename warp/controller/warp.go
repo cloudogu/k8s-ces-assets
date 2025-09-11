@@ -170,7 +170,7 @@ func (w *Watcher) execute(ctx context.Context) error {
 		return fmt.Errorf("error during read: %w", err)
 	}
 	ctrl.Log.Info(fmt.Sprintf("All found Categories: %v", categories))
-	err = w.jsonWriter(ctx, categories)
+	err = w.jsonWriter(categories)
 	if err != nil {
 		w.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu failed: %w", err)
 		return fmt.Errorf("failed to write warp menu as json: %w", err)
@@ -179,21 +179,10 @@ func (w *Watcher) execute(ctx context.Context) error {
 	return nil
 }
 
-func (w *Watcher) jsonWriter(ctx context.Context, data interface{}) error {
-	configmap, err := w.getMenuConfigMap(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get menu json config map: %w", err)
-	}
-
+func (w *Watcher) jsonWriter(data interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal warp data: %w", err)
-	}
-
-	configmap.Data["menu.json"] = string(jsonData)
-	err = w.k8sClient.Update(ctx, configmap)
-	if err != nil {
-		return fmt.Errorf("failed to update menu json config map: %w", err)
 	}
 
 	path, err := config.ReadWarpPath()
@@ -217,12 +206,4 @@ func (w *Watcher) jsonWriter(ctx context.Context, data interface{}) error {
 	}
 
 	return nil
-}
-
-func (w *Watcher) getMenuConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
-	configmap := &corev1.ConfigMap{}
-	objectKey := client.ObjectKey{Name: config.MenuConfigMap, Namespace: w.namespace}
-	err := w.k8sClient.Get(ctx, objectKey, configmap)
-
-	return configmap, err
 }

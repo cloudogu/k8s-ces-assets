@@ -37,6 +37,15 @@
         "name"      "error-503"
         "mountPath" "/var/www/html/errors") -}}
 
+{{- /* Volume--Mount for sharing custom html*/ -}}
+{{- $raw := .Values.initContainer.configMaps | default (list) -}}
+{{- $customHtmlCMs := list -}}
+{{- range $i, $v := $raw }}
+  {{- if $v }}
+    {{- $customHtmlCMs = append $customHtmlCMs $v -}}
+  {{- end }}
+{{- end }}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,9 +69,18 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       volumes:
+        {{- if gt (len $customHtmlCMs) 0 }}
         - name: customhtml-src
-          configMap:
-            name: "{{ .Values.initContainer.configMapName }}"
+          projected:
+            sources:
+              {{- range $i, $cm := $customHtmlCMs }}
+              - configMap:
+                  name: "{{ $cm }}"
+              {{- end }}
+        {{- else }}
+        - name: customhtml-src
+          emptyDir: {}
+        {{- end }}
         - name: customhtml-dst
           emptyDir: {}
         - name: app-config

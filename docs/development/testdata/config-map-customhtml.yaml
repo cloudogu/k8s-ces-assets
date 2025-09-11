@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "k8s-ces-assets-customhtml"
+data:
+  sample.html: |-
+    <html><body>Sample</body></html>
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "k8s-ces-assets-customhtml-extra"
+data:
+  sample2.html: |-
+    <html><body>Sample2</body></html>
