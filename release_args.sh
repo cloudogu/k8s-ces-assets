@@ -9,12 +9,12 @@ update_versions_modify_files() {
   valuesYAML=k8s/helm/values.yaml
   componentPatchTplYAML=k8s/helm/component-patch-tpl.yaml
 
-  yq -i ".nginx.manager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
-  yq -i ".nginx.warp.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
-  yq -i ".nginx.maintenance.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
-  yq -i ".values.images.manager |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
-  yq -i ".values.images.warp |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
-  yq -i ".values.images.maintenance |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
+  ./.bin/yq -i ".nginx.manager.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  ./.bin/yq -i ".nginx.warp.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  ./.bin/yq -i ".nginx.maintenance.image.tag = \"${newReleaseVersion}\"" "${valuesYAML}"
+  ./.bin/yq -i ".values.images.manager |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
+  ./.bin/yq -i ".values.images.warp |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
+  ./.bin/yq -i ".values.images.maintenance |= sub(\":(([0-9]+)\.([0-9]+)\.([0-9]+)((?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))|(?:\+[0-9A-Za-z-]+))?)\", \":${newReleaseVersion}\")" "${componentPatchTplYAML}"
 }
 
 update_versions_stage_modified_files() {
