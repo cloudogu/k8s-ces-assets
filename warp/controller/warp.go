@@ -70,10 +70,13 @@ func (w *Watcher) Run(ctx context.Context) error {
 	}
 
 	for _, source := range w.configuration.Sources {
-		if source.Type == "dogus" {
+		switch source.Type {
+		case "dogus":
 			w.startVersionRegistryWatch(ctx)
-		} else if source.Type == "externals" {
+		case "externals":
 			w.startGlobalConfigDirectoryWatch(ctx, source.Path)
+		default:
+			// do nothing
 		}
 	}
 
@@ -187,22 +190,21 @@ func (w *Watcher) jsonWriter(data interface{}) error {
 
 	path, err := config.ReadWarpPath()
 	if err != nil {
-		fmt.Println("failed to get warp directory:", err)
-		return err
+		return fmt.Errorf("failed to get warp directory: %w", err)
 	}
 
 	file, err := os.Create(path + "/menu.json")
 	if err != nil {
-		fmt.Println("failed to create warp.json:", err)
-		return err
+		return fmt.Errorf("failed to create warp.json: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	// Daten schreiben
 	_, err = file.WriteString(string(jsonData))
 	if err != nil {
-		fmt.Println("failed to write json data:", err)
-		return err
+		return fmt.Errorf("failed to write json data: %w", err)
 	}
 
 	return nil
