@@ -128,6 +128,7 @@ func TestWatcher_Run(t *testing.T) {
 		// when
 		err := sut.Run(testCtx)
 
+		time.Sleep(100 * time.Millisecond)
 		menujson := filepath.Join(tmpDir, "menu.json")
 		data, err := os.ReadFile(menujson)
 		if err != nil {
@@ -225,6 +226,7 @@ func TestWatcher_Run(t *testing.T) {
 		err := sut.Run(cancelCtx)
 		resultChannel <- dogu.CurrentVersionsWatchResult{}
 
+		time.Sleep(100 * time.Millisecond)
 		menujson := filepath.Join(tmpDir, "menu.json")
 		data, err := os.ReadFile(menujson)
 		if err != nil {

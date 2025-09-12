@@ -106,7 +106,7 @@ node('docker') {
             }
 
             stage('Wait for Ready Rollout') {
-                k3d.kubectl("--namespace default wait --for=condition=Ready pods --all")
+                k3d.kubectl("--namespace default wait --for=condition=Ready pods --all --timeout=120s")
             }
 
             stageAutomaticRelease()
