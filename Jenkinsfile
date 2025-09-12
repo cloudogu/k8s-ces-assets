@@ -225,7 +225,7 @@ void stageAutomaticRelease() {
     }
 }
 
-String buildAndPushToLocalRegistry(def imageRegistryInternalHandle, def imageName, def tag, def dockerFile) {
+def buildAndPushToLocalRegistry(def imageRegistryInternalHandle, def imageName, def tag, def dockerFile) {
     def internalHandle="${imageName}:${tag}"
     def externalRegistry="${imageRegistryExternalHandle}"
 
