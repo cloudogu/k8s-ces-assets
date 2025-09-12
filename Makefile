@@ -18,7 +18,6 @@ IMAGE_IMPORT_TARGET=images-import
 
 include build/make/variables.mk
 include build/make/self-update.mk
-include build/make/dependencies-gomod.mk
 include build/make/build.mk
 include build/make/test-common.mk
 include build/make/test-unit.mk
@@ -103,3 +102,26 @@ images-import: ## import images from ces-importer and
 		IMAGE_DIR=./maintenance \
 		IMAGE=${ARTIFACT_ID_MAINTENANCE}:${VERSION} \
 		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH):${VERSION}
+
+.PHONY: vendor
+vendor: # no prerequisites
+	@echo "Installing dependencies using go modules..."
+	${GO_CALL} work vendor
+
+
+compile-generic:
+	@echo "Compiling..."
+# here is go called without mod capabilities because of error "go: error loading module requirements"
+# see https://github.com/golang/go/issues/30868#issuecomment-474199640
+	@$(GO_ENV_VARS) go build $(GO_BUILD_FLAGS)-warp ./warp
+	@$(GO_ENV_VARS) go build $(GO_BUILD_FLAGS)-maintenance ./maintenance
+
+$(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
+	@echo ""
+	@echo "complete static analysis:"
+	@echo ""
+	@$(LINT) $(LINTFLAGS) run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
+
+$(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
+	@echo "run static analysis with export to checkstyle format"
+	@$(LINT) $(LINTFLAGS) --output.checkstyle.path stdout run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
