@@ -78,6 +78,7 @@ node('docker') {
         }
 
         K3d k3d = new K3d(this, "${WORKSPACE}", "${WORKSPACE}/k3d", env.PATH)
+        String controllerVersion = makefile.getVersion()
 
         try {
             stage('Set up k3d cluster') {
