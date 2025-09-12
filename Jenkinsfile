@@ -97,7 +97,7 @@ node('docker') {
                 docker.image("golang:${goVersion}")
                         .mountJenkinsUser()
                         .inside("--volume ${WORKSPACE}:/workdir -w /workdir") {
-                            sh "STAGE=development IMAGE_DEV=${repository} IMAGE_DEV_WARP=${repository}-warp IMAGE_DEV_MAINTENANCE=${repository}-maintenance make helm-values-replace-image-repo"
+                            sh "make helm-values-replace-image-repo STAGE=development IMAGE_DEV=${repository} IMAGE_DEV_WARP=${repository}-warp IMAGE_DEV_MAINTENANCE=${repository}-maintenance"
                         }
             }
 

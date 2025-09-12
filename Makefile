@@ -65,10 +65,8 @@ helm-values-replace-image-repo: $(BINARY_YQ)
 		echo "Setting dev image repo in target value.yaml!" ;\
 		$(BINARY_YQ) -i e ".nginx.manager.image.registry=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		$(BINARY_YQ) -i e ".nginx.manager.image.repository=\"$(shell echo '${IMAGE_DEV}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-		echo "Setting warp dev image repo in target value.yaml!" ;\
 		$(BINARY_YQ) -i e ".nginx.warp.image.registry=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		$(BINARY_YQ) -i e ".nginx.warp.image.repository=\"$(shell echo '${IMAGE_DEV_WARP}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
-		echo "Setting maintenance dev image repo in target value.yaml!" ;\
 		$(BINARY_YQ) -i e ".nginx.maintenance.image.registry=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\1/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 		$(BINARY_YQ) -i e ".nginx.maintenance.image.repository=\"$(shell echo '${IMAGE_DEV_MAINTENANCE}' | sed 's/\([^\/]*\)\/\(.*\)/\2/')\"" ${K8S_COMPONENT_TARGET_VALUES} ;\
 	fi
