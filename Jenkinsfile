@@ -87,9 +87,9 @@ node('docker') {
 
             def imageName = ""
             stage('Build & Push Image') {
-                imageName = buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion, ".")
-                imageNameWarp = buildAndPushToLocalRegistry("cloudogu/${repositoryName}-warp", controllerVersion, "./warp")
-                imageNameMaintenance = buildAndPushToLocalRegistry("cloudogu/${repositoryName}-maintenance", controllerVersion, "./maintenance")
+                imageName = buildAndPushToLocalRegistry(k3d, "cloudogu/${repositoryName}", controllerVersion, ".")
+                imageNameWarp = buildAndPushToLocalRegistry(k3d, "cloudogu/${repositoryName}-warp", controllerVersion, "./warp")
+                imageNameMaintenance = buildAndPushToLocalRegistry(k3d, "cloudogu/${repositoryName}-maintenance", controllerVersion, "./maintenance")
             }
 
             stage('Update development resources') {
@@ -225,9 +225,9 @@ void stageAutomaticRelease() {
     }
 }
 
-def buildAndPushToLocalRegistry(def imageRegistryInternalHandle, def imageName, def tag, def dockerFile) {
+def buildAndPushToLocalRegistry(def k3d, def imageName, def tag, def dockerFile) {
     def internalHandle="${imageName}:${tag}"
-    def externalRegistry="${imageRegistryExternalHandle}"
+    def externalRegistry="${k3d.@registry.@imageRegistryExternalHandle}"
 
     def dockerImage = this.docker.build("${internalHandle}", "${dockerFile}")
 
@@ -235,7 +235,7 @@ def buildAndPushToLocalRegistry(def imageRegistryInternalHandle, def imageName, 
         dockerImage.push("${tag}")
     }
 
-    return "${imageRegistryInternalHandle}/${internalHandle}"
+    return "${k3d.@registry.@imageRegistryInternalHandle}/${internalHandle}"
 }
 
 void make(String makeArgs) {
