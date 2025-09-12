@@ -1,0 +1,84 @@
+global:
+  imagePullSecrets:
+    - name: "ces-container-registries"
+cesWarpConfig:
+  warp: |
+    sources:
+      - path: /dogu
+        type: dogus
+        tag: warp
+      - path: externals
+        type: externals
+    target: /var/www/html/warp/menu.json
+    order:
+      Development Apps: 100
+    support:
+      - identifier: docsCloudoguComUrl
+        external: true
+        href: https://docs.cloudogu.com/
+      - identifier: aboutCloudoguToken
+        external: false
+        href: /info/about
+      - identifier: platform
+        external: true
+        href: https://platform.cloudogu.com
+ingress:
+  className: "k8s-ecosystem-ces-service"
+  host: ""
+  path: "/"
+  pathType: "Prefix"
+  annotations: {}
+initContainer:
+  customHtmlMountPath: "/var/www/html/customhtml/"
+  configMaps: []
+nginx:
+  manager:
+    env:
+      stage: production
+      logLevel: info
+    image:
+      registry: docker.io
+      repository: cloudogu/k8s-ces-assets
+      tag: 0.0.2
+    imagePullPolicy: Always
+    config:
+      defaultDogu: "usrmgmt"
+      disableAccessLog: false
+      htmlContentUrl: "static"
+    resources:
+      requests:
+        cpu: 15m
+        memory: 105M
+      limits:
+        memory: 105M
+  warp:
+    mountPath: "/var/www/html/warp/menu"
+    env:
+      stage: production
+      logLevel: info
+    image:
+      registry: docker.io
+      repository: cloudogu/k8s-ces-assets-warp
+      tag: 0.0.2
+    imagePullPolicy: Always
+    resources:
+      requests:
+        cpu: 15m
+        memory: 105M
+      limits:
+        memory: 105M
+  maintenance:
+    env:
+      stage: production
+      logLevel: info
+    image:
+      registry: docker.io
+      repository: cloudogu/k8s-ces-assets-maintenance
+      tag: 0.0.2
+    imagePullPolicy: Always
+    resources:
+      requests:
+        cpu: 15m
+        memory: 105M
+      limits:
+        memory: 105M

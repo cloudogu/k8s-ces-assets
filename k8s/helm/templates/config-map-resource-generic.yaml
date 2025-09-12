@@ -1,0 +1,18 @@
+{{- $root := . -}}
+{{- $base := "resources" -}}
+{{- $files := $root.Files.Glob (printf "%s/**" $base) -}}
+{{- if or (not $files) (eq (len $files) 0) -}}
+{{- fail (printf "Keine Dateien unter %q gefunden – Pfad oder .helmignore prüfen." $base) -}}
+{{- end -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-ces-assets-nginx-conf
+data:
+  {{- range $path, $content := $files }}
+  {{- $rel  := trimPrefix (printf "%s/" $base) $path -}}
+  {{- $name := base $rel -}}       {{/* nur Dateiname als Key */}}
+  "{{ $name }}": |-
+{{ tpl (toString $content) $root | nindent 4 }}
+  {{- end }}
