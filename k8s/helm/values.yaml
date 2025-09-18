@@ -42,7 +42,7 @@ nginx:
       tag: 0.1.0
     imagePullPolicy: Always
     config:
-      defaultDogu: "usrmgmt"
+      defaultDogu: "usermgt"
       disableAccessLog: false
       htmlContentUrl: "static"
     resources:
