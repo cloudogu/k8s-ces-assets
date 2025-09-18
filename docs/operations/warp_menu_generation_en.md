@@ -61,7 +61,7 @@ data:
     block_warpmenu_support_category: "false"
 ```
 
-# do not hide any entries
+##### do not hide any entries
 ```shell
 kubectl edit configmap global-config --namespace ecosystem
 ```

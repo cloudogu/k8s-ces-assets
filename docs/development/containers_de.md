@@ -1,6 +1,6 @@
 # Container-Zugehörigkeit
 
-Die `k8s-ces-assets`-Komponente besteht im Ganzen aus 4 Containers. 
+Die `k8s-ces-assets`-Komponente besteht im Ganzen aus 4 Containern. 
 
 * Init-Container zum Kopieren der custom-HTML-Resourcen und zum Sichern der Warp-Html-Resourcen.
 * nginx-manager für das eigentliche Ausbringen der statischen Resourcen

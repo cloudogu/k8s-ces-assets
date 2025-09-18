@@ -1,4 +1,4 @@
-# Hinzufügen einer neuer Resource
+# Hinzufügen einer neuen Resource
 
 Diese Komponente liefert einige Dateien direkt in `/etc/nginx` bzw. `/var/www/html` aus. 
 

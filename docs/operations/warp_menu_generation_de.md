@@ -55,7 +55,7 @@ data:
   config.yaml:
     block_warpmenu_support_category: "true"
 ```
-# keine Einträge ausblenden
+##### keine Einträge ausblenden
 ```shell
 # alle Einträge ausblenden
 kubectl edit configmap global-config --namespace ecosystem
