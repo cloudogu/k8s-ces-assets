@@ -1,11 +1,24 @@
 apiVersion: v1
 values:
   images:
-    job: cloudogu/k8s-ces-assets:0.1.0
+    manager: cloudogu/k8s-ces-assets:1.0.0
+    warp: cloudogu/k8s-ces-assets:1.0.0
+    maintenance: cloudogu/k8s-ces-assets:1.0.0
 patches:
   values.yaml:
-    job:
-      image:
-        registry: "{{ registryFrom .images.job }}"
-        repository: "{{ repositoryFrom .images.job }}"
-        tag: "{{ tagFrom .images.job }}"
+    nginx:
+      manager:
+        image:
+          registry: "{{ registryFrom .images.manager }}"
+          repository: "{{ repositoryFrom .images.manager }}"
+          tag: "{{ tagFrom .images.manager }}"
+      warp:
+        image:
+          registry: "{{ registryFrom .images.warp }}"
+          repository: "{{ repositoryFrom .images.warp }}"
+          tag: "{{ tagFrom .images.warp }}"
+      maintenance:
+        image:
+          registry: "{{ registryFrom .images.maintenance }}"
+          repository: "{{ repositoryFrom .images.maintenance }}"
+          tag: "{{ tagFrom .images.maintenance }}"
