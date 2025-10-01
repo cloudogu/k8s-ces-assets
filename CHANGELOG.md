@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.2] - 2025-10-01
+### Fixed
+- [#7] images in component-patch-template
+
 ## [v1.0.1] - 2025-09-29
 ### Fixed
 - [#5] missing network-policy
