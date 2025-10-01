@@ -7,7 +7,7 @@ IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 
 MAKEFILES_VERSION=10.2.0
 
-ADDITIONAL_CLEAN=dist-clean
+ADDITIONAL_CLEAN=clean_charts
 MOCKERY_VERSION=v2.53.3
 
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
@@ -124,3 +124,13 @@ $(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
 $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
 	@echo "run static analysis with export to checkstyle format"
 	@$(LINT) $(LINTFLAGS) --output.checkstyle.path stdout run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
+
+
+clean_charts:
+	rm -rf ${HELM_SOURCE_DIR}/charts
+
+
+.PHONY: k8s-ces-assets-release
+k8s-ces-assets-release: ## Interactively starts the release workflow for k8s-ces-assets
+	@echo "Starting git flow release..."
+	@build/make/release.sh k8s-ces-assets
