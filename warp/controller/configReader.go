@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	libconfig "github.com/cloudogu/k8s-registry-lib/config"
-	types2 "github.com/cloudogu/warp-assets/controller/types"
 	"sort"
 	"strconv"
 	"strings"
 
+	libconfig "github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/warp-assets/config"
+	types2 "github.com/cloudogu/warp-assets/controller/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/pkg/errors"
@@ -29,6 +29,20 @@ type ConfigReader struct {
 const globalBlockWarpSupportCategoryConfigurationKey = "block_warpmenu_support_category"
 const globalDisabledWarpSupportEntriesConfigurationKey = "disabled_warpmenu_support_entries"
 const globalAllowedWarpSupportEntriesConfigurationKey = "allowed_warpmenu_support_entries"
+
+func NewConfigReader(
+	warpMenuConfiguration *config.Configuration,
+	globalConfigRepo GlobalConfigRepository,
+	doguVersionRegistry DoguVersionRegistry,
+	localDoguRepo LocalDoguRepo,
+) *ConfigReader {
+	return &ConfigReader{
+		configuration:       warpMenuConfiguration,
+		globalConfigRepo:    globalConfigRepo,
+		doguVersionRegistry: doguVersionRegistry,
+		localDoguRepo:       localDoguRepo,
+	}
+}
 
 // Read reads sources specified in a configuration and build warp menu categories for them.
 func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Configuration) (types2.Categories, error) {
@@ -52,16 +66,19 @@ func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Conf
 	readKeyErrorFmt := "Warning, could not read Key: %v. Err: %v"
 
 	isSupportCategoryBlocked, err := reader.readBool(ctx, globalBlockWarpSupportCategoryConfigurationKey)
+	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) isSupportCategoryBlocked: %v", isSupportCategoryBlocked))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalBlockWarpSupportCategoryConfigurationKey, err))
 	}
 
 	disabledSupportEntries, err := reader.readStrings(ctx, globalDisabledWarpSupportEntriesConfigurationKey)
+	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) disabledSupportEntries: %v", disabledSupportEntries))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalDisabledWarpSupportEntriesConfigurationKey, err))
 	}
 
 	allowedSupportEntries, err := reader.readStrings(ctx, globalAllowedWarpSupportEntriesConfigurationKey)
+	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) allowedSupportEntries: %v", allowedSupportEntries))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalAllowedWarpSupportEntriesConfigurationKey, err))
 	}

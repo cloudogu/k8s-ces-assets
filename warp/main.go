@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
+	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/cloudogu/warp-assets/config"
 	warp2 "github.com/cloudogu/warp-assets/controller"
@@ -13,7 +16,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -21,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
-	"github.com/cloudogu/k8s-registry-lib/dogu"
 )
 
 var (
@@ -64,28 +65,48 @@ func startManager() error {
 
 	options := getK8sManagerOptions(watchNamespace)
 
-	serviceDiscManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	warpMenuManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		return fmt.Errorf("failed to create new manager: %w", err)
 	}
 
-	eventRecorder := serviceDiscManager.GetEventRecorderFor("k8s-ces-assets-nginx")
+	/*
+		eventRecorder := warpMenuManager.GetEventRecorderFor("k8s-ces-assets-nginx")
 
-	clientset, err := getK8sClientSet(serviceDiscManager.GetConfig())
+		clientset, err := getK8sClientSet(warpMenuManager.GetConfig())
+		if err != nil {
+			return fmt.Errorf("failed to create k8s client set: %w", err)
+		}
+		configMapInterface := clientset.CoreV1().ConfigMaps(watchNamespace)
+
+		doguVersionRegistry := dogu.NewDoguVersionRegistry(configMapInterface)
+		localDoguRepo := dogu.NewLocalDoguDescriptorRepository(configMapInterface)
+		globalConfigRepo := repository.NewGlobalConfigRepository(configMapInterface)
+
+		if err := handleWarpMenuCreation(warpMenuManager, doguVersionRegistry, localDoguRepo, watchNamespace, eventRecorder, globalConfigRepo); err != nil {
+			return fmt.Errorf("failed to create warp menu creator: %w", err)
+		}
+
+	*/
+
+	clientset, err := getK8sClientSet(warpMenuManager.GetConfig())
 	if err != nil {
 		return fmt.Errorf("failed to create k8s client set: %w", err)
 	}
-	configMapInterface := clientset.CoreV1().ConfigMaps(watchNamespace)
 
+	configMapInterface := clientset.CoreV1().ConfigMaps(watchNamespace)
+	globalConfigRepo := repository.NewGlobalConfigRepository(configMapInterface)
 	doguVersionRegistry := dogu.NewDoguVersionRegistry(configMapInterface)
 	localDoguRepo := dogu.NewLocalDoguDescriptorRepository(configMapInterface)
-	globalConfigRepo := repository.NewGlobalConfigRepository(configMapInterface)
 
-	if err := handleWarpMenuCreation(serviceDiscManager, doguVersionRegistry, localDoguRepo, watchNamespace, eventRecorder, globalConfigRepo); err != nil {
-		return fmt.Errorf("failed to create warp menu creator: %w", err)
+	client := warpMenuManager.GetClient()
+	reconciler := warp2.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo)
+	err = reconciler.SetupWithManager(warpMenuManager)
+	if err != nil {
+		return fmt.Errorf("failure setup reconciler with manager: %w", err)
 	}
 
-	if err = startK8sManager(serviceDiscManager); err != nil {
+	if err = startK8sManager(warpMenuManager); err != nil {
 		return fmt.Errorf("failure at warp assets manager: %w", err)
 	}
 	return nil
