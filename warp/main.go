@@ -94,16 +94,21 @@ func startManager() error {
 		return fmt.Errorf("failed to create k8s client set: %w", err)
 	}
 
+	client := warpMenuManager.GetClient()
+
 	configMapInterface := clientset.CoreV1().ConfigMaps(watchNamespace)
 	globalConfigRepo := repository.NewGlobalConfigRepository(configMapInterface)
 	doguVersionRegistry := dogu.NewDoguVersionRegistry(configMapInterface)
 	localDoguRepo := dogu.NewLocalDoguDescriptorRepository(configMapInterface)
 
-	client := warpMenuManager.GetClient()
-	reconciler := warp2.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo)
+	warpMenuPath, err := config.ReadWarpPath()
+	if err != nil {
+		return fmt.Errorf("read warp menu path from config: %w", err)
+	}
+	reconciler := warp2.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo, warpMenuPath)
 	err = reconciler.SetupWithManager(warpMenuManager)
 	if err != nil {
-		return fmt.Errorf("failure setup reconciler with manager: %w", err)
+		return fmt.Errorf("setup reconciler with manager: %w", err)
 	}
 
 	if err = startK8sManager(warpMenuManager); err != nil {

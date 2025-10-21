@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	//"github.com/cloudogu/warp-assets/config"
 	corev1 "k8s.io/api/core/v1"
@@ -20,31 +22,32 @@ import (
 const globalConfigMapName = "global-config"
 
 type WarpMenuConfigReconciler struct {
-	client              client.Client
+	client              k8sClient
 	globalConfigRepo    GlobalConfigRepository
 	doguVersionRegistry DoguVersionRegistry
 	localDoguRepo       LocalDoguRepo
+	warpMenuPath        string
 }
 
 func NewWarpMenuReconciler(
-	client client.Client,
+	client k8sClient,
 	globalConfigRepo GlobalConfigRepository,
 	doguVersionRegistry DoguVersionRegistry,
 	localDoguRepo LocalDoguRepo,
+	warpMenuPath string,
 ) *WarpMenuConfigReconciler {
 	return &WarpMenuConfigReconciler{
 		client:              client,
 		globalConfigRepo:    globalConfigRepo,
 		doguVersionRegistry: doguVersionRegistry,
 		localDoguRepo:       localDoguRepo,
+		warpMenuPath:        warpMenuPath,
 	}
 }
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	//configMap := &corev1.ConfigMap{}
-	//err := r.client.Get(ctx, req.NamespacedName, configMap)
-
-	// check if config maps were created, deleted or updated ?
+	logger := log.FromContext(ctx)
+	logger.Info("WarpMenuConfigReconciler reconcile()")
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
@@ -56,9 +59,9 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("create categories: %w", err)
 	}
 
-	err = r.writeWarpMenuJson(categories)
+	err = r.writeWarpMenuFile(categories)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("write warp menu json file: %w", err)
+		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
 	return ctrl.Result{}, nil
@@ -67,28 +70,30 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.ConfigMap{}).
-		WithEventFilter(globalConfigPredicate()).
+		WithEventFilter(eventFilterPredicate()).
 		Complete(r)
 }
 
-// TODO: filter dogu-spec-*
-// TODO: filter global-config; only key "externals" ?
-// TODO: filter k8s-ces-warp-config? It contains external links
-func globalConfigPredicate() predicate.Predicate {
+func eventFilterPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return isWatchedConfigMap(e.Object.GetName())
 		},
 		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return isWatchedConfigMap(e.Object.GetName())
 		},
 		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-			return e.ObjectOld.GetName() == globalConfigMapName
+			return isWatchedConfigMap(e.ObjectOld.GetName())
 		},
 		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
-			return e.Object.GetName() == globalConfigMapName
+			return isWatchedConfigMap(e.Object.GetName())
 		},
 	}
+}
+
+func isWatchedConfigMap(configMapName string) bool {
+	isDoguSpecConfigMap := strings.HasPrefix(configMapName, "dogu-spec-")
+	return isDoguSpecConfigMap || configMapName == globalConfigMapName || configMapName == config.WarpConfigMap
 }
 
 func (r *WarpMenuConfigReconciler) createCategories(ctx context.Context, warpMenuConfiguration *config.Configuration) (types.Categories, error) {
@@ -102,20 +107,16 @@ func (r *WarpMenuConfigReconciler) createCategories(ctx context.Context, warpMen
 	return configReader.Read(ctx, warpMenuConfiguration)
 }
 
-func (r *WarpMenuConfigReconciler) writeWarpMenuJson(categories types.Categories) error {
+func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories) error {
 	jsonData, err := json.Marshal(categories)
 	if err != nil {
 		return fmt.Errorf("failed to marshal warp data: %w", err)
 	}
 
-	path, err := config.ReadWarpPath()
+	path := r.warpMenuPath + "/menu.json"
+	file, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("failed to get warp directory: %w", err)
-	}
-
-	file, err := os.Create(path + "/menu.json")
-	if err != nil {
-		return fmt.Errorf("failed to create warp.json: %w", err)
+		return fmt.Errorf("failed to create file: %s %w", path, err)
 	}
 	defer func() {
 		_ = file.Close()

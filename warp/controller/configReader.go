@@ -41,6 +41,8 @@ func NewConfigReader(
 		globalConfigRepo:    globalConfigRepo,
 		doguVersionRegistry: doguVersionRegistry,
 		localDoguRepo:       localDoguRepo,
+		doguConverter:       &types2.DoguConverter{},
+		externalConverter:   &types2.ExternalConverter{},
 	}
 }
 
@@ -66,19 +68,16 @@ func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Conf
 	readKeyErrorFmt := "Warning, could not read Key: %v. Err: %v"
 
 	isSupportCategoryBlocked, err := reader.readBool(ctx, globalBlockWarpSupportCategoryConfigurationKey)
-	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) isSupportCategoryBlocked: %v", isSupportCategoryBlocked))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalBlockWarpSupportCategoryConfigurationKey, err))
 	}
 
 	disabledSupportEntries, err := reader.readStrings(ctx, globalDisabledWarpSupportEntriesConfigurationKey)
-	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) disabledSupportEntries: %v", disabledSupportEntries))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalDisabledWarpSupportEntriesConfigurationKey, err))
 	}
 
 	allowedSupportEntries, err := reader.readStrings(ctx, globalAllowedWarpSupportEntriesConfigurationKey)
-	ctrl.Log.Info(fmt.Sprintf("SupportEntries (warp-menu-config-map) allowedSupportEntries: %v", allowedSupportEntries))
 	if err != nil {
 		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalAllowedWarpSupportEntriesConfigurationKey, err))
 	}

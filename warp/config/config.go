@@ -3,16 +3,17 @@ package config
 import (
 	"context"
 	"fmt"
+	"os"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	warpConfigMap = "k8s-ces-warp-config"
+	WarpConfigMap = "k8s-ces-warp-config"
 	MenuConfigMap = "k8s-ces-menu-json"
 	StageLocal    = "local"
 	DevConfigPath = "k8s/dev-resources/k8s-ces-warp-config.yaml"
@@ -84,7 +85,7 @@ func readWarpConfigFromCluster(ctx context.Context, client client.Client, namesp
 	configmap := &corev1.ConfigMap{}
 	objectKey := types.NamespacedName{
 		Namespace: namespace,
-		Name:      warpConfigMap,
+		Name:      WarpConfigMap,
 	}
 	err := client.Get(ctx, objectKey, configmap)
 	if err != nil {
