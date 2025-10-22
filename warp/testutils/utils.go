@@ -1,7 +1,5 @@
 package testutils
 
-type WarpMenu []WarpMenuCategory
-
 type WarpMenuCategory struct {
 	Title   string
 	Order   int

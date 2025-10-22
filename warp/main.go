@@ -8,7 +8,7 @@ import (
 	"github.com/cloudogu/k8s-registry-lib/dogu"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/cloudogu/warp-assets/config"
-	warp2 "github.com/cloudogu/warp-assets/controller"
+	warpCtrl "github.com/cloudogu/warp-assets/controller"
 	"github.com/cloudogu/warp-assets/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -105,7 +105,7 @@ func startManager() error {
 	if err != nil {
 		return fmt.Errorf("read warp menu path from config: %w", err)
 	}
-	reconciler := warp2.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo, warpMenuPath)
+	reconciler := warpCtrl.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo, warpMenuPath)
 	err = reconciler.SetupWithManager(warpMenuManager)
 	if err != nil {
 		return fmt.Errorf("setup reconciler with manager: %w", err)
@@ -157,8 +157,8 @@ func getK8sManagerOptions(watchNamespace string) manager.Options {
 	}
 }
 
-func handleWarpMenuCreation(k8sManager k8sManager, doguVersionRegistry warp2.DoguVersionRegistry, localDoguRepo warp2.LocalDoguRepo, namespace string, recorder record.EventRecorder, globalConfigRepo warp2.GlobalConfigRepository) error {
-	warpMenuCreator := warp2.NewWarpMenuCreator(k8sManager.GetClient(), doguVersionRegistry, localDoguRepo, namespace, recorder, globalConfigRepo)
+func handleWarpMenuCreation(k8sManager k8sManager, doguVersionRegistry warpCtrl.DoguVersionRegistry, localDoguRepo warpCtrl.LocalDoguRepo, namespace string, recorder record.EventRecorder, globalConfigRepo warpCtrl.GlobalConfigRepository) error {
+	warpMenuCreator := warpCtrl.NewWarpMenuCreator(k8sManager.GetClient(), doguVersionRegistry, localDoguRepo, namespace, recorder, globalConfigRepo)
 
 	if err := k8sManager.Add(warpMenuCreator); err != nil {
 		return fmt.Errorf("failed to add warp menu creator as runnable to the manager: %w", err)
