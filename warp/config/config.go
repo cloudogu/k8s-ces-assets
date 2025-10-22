@@ -20,8 +20,9 @@ const (
 	StageEnvVar   = "STAGE"
 	// namespaceEnvVar defines the name of the environment variables given into the service discovery to define the
 	// namespace that should be watched by the service discovery.
-	namespaceEnvVar = "WATCH_NAMESPACE"
-	warpPathEnvVar  = "WARP_PATH"
+	namespaceEnvVar      = "WATCH_NAMESPACE"
+	warpPathEnvVar       = "WARP_PATH"
+	deploymentNameEnvVar = "DEPLOYMENT_NAME"
 )
 
 var (
@@ -120,4 +121,14 @@ func ReadWarpPath() (string, error) {
 	logger.Info(fmt.Sprintf("found target warp path: [%s]", warpPath))
 
 	return warpPath, nil
+}
+
+func ReadDeploymentName() (string, error) {
+	deploymentName, found := os.LookupEnv(deploymentNameEnvVar)
+	if !found {
+		return "", fmt.Errorf("failed to read deployment name from environment variable [%s], please set the variable and try again", deploymentNameEnvVar)
+	}
+	logger.Info(fmt.Sprintf("found target depolyment name: [%s]", deploymentName))
+
+	return deploymentName, nil
 }

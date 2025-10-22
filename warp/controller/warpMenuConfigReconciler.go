@@ -9,9 +9,10 @@ import (
 
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
+	appsv1 "k8s.io/api/apps/v1"
+	types2 "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	//"github.com/cloudogu/warp-assets/config"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,51 +20,63 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const globalConfigMapName = "global-config"
+const (
+	globalConfigMapName              = "global-config"
+	warpMenuUpdateEventReason        = "WarpMenu"
+	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
+)
 
 type WarpMenuConfigReconciler struct {
 	client              k8sClient
 	globalConfigRepo    GlobalConfigRepository
 	doguVersionRegistry DoguVersionRegistry
 	localDoguRepo       LocalDoguRepo
+	eventRecorder       eventRecorder
 	warpMenuPath        string
+	deploymentName      string
 }
 
-func NewWarpMenuReconciler(
-	client k8sClient,
-	globalConfigRepo GlobalConfigRepository,
-	doguVersionRegistry DoguVersionRegistry,
-	localDoguRepo LocalDoguRepo,
-	warpMenuPath string,
-) *WarpMenuConfigReconciler {
+func NewWarpMenuReconciler(client k8sClient, globalConfigRepo GlobalConfigRepository, doguVersionRegistry DoguVersionRegistry, localDoguRepo LocalDoguRepo, eventRecoder eventRecorder, warpMenuPath string, deploymentName string) *WarpMenuConfigReconciler {
 	return &WarpMenuConfigReconciler{
 		client:              client,
 		globalConfigRepo:    globalConfigRepo,
 		doguVersionRegistry: doguVersionRegistry,
 		localDoguRepo:       localDoguRepo,
+		eventRecorder:       eventRecoder,
 		warpMenuPath:        warpMenuPath,
+		deploymentName:      deploymentName,
 	}
 }
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	deployment := &appsv1.Deployment{}
+	err := r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
+	if err != nil {
+		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-nginx", err)
+	}
+
 	logger := log.FromContext(ctx)
 	logger.Info("WarpMenuConfigReconciler reconcile()")
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("read warp menu configuration: %w", err)
 	}
 
 	categories, err := r.createCategories(ctx, warpMenuConfiguration)
 	if err != nil {
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Creating warp menu categories failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("create categories: %w", err)
 	}
 
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
+	r.eventRecorder.Event(deployment, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
 	return ctrl.Result{}, nil
 }
 

@@ -19,10 +19,16 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/yaml"
+)
+
+const (
+	testDeploymentName = "aDeployment"
+	testNamespace      = "aNamespace"
 )
 
 func TestWarpMenuReconcile(t *testing.T) {
@@ -56,7 +62,10 @@ func TestWarpMenuReconcile(t *testing.T) {
 		globalConfigRepoMock := NewMockGlobalConfigRepository(t)
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		warpMenuPath := t.TempDir()
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Sources: []config.Source{
@@ -78,20 +87,13 @@ func TestWarpMenuReconcile(t *testing.T) {
 		})
 		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
-		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
 		require.NoError(t, err)
 
 		warpMenuCategories := parseWarpMenuCategoriesFromJsonFile(t, warpMenuPath)
-
 		assert.Equal(t, 1, len(warpMenuCategories))
 		assert.Equal(t, "News", warpMenuCategories[0].Title)
 
@@ -111,7 +113,10 @@ func TestWarpMenuReconcile(t *testing.T) {
 		globalConfigRepoMock := NewMockGlobalConfigRepository(t)
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
+		eventRecorderMock := newMockEventRecorder(t)
 		warpMenuPath := t.TempDir()
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Support: []config.SupportSource{
@@ -132,13 +137,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		globalConfig := config2.CreateGlobalConfig(config2.Entries{})
 		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -171,6 +170,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
 		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Sources: []config.Source{
@@ -209,13 +211,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock.EXPECT().GetCurrentOfAll(mock.Anything).Return(doguSimpleVersionNames, nil)
 		localDoguRepo.EXPECT().GetAll(mock.Anything, doguSimpleVersionNames).Return(simpleVersionNameToDoguMap, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -256,6 +252,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
 		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Sources: []config.Source{
@@ -286,13 +285,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock.EXPECT().GetCurrentOfAll(mock.Anything).Return(doguSimpleVersionNames, nil)
 		localDoguRepo.EXPECT().GetAll(mock.Anything, doguSimpleVersionNames).Return(simpleVersionNameToDoguMap, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -308,6 +301,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
 		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Support: []config.SupportSource{
@@ -330,13 +326,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		})
 		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -352,6 +342,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
 		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Support: []config.SupportSource{
@@ -380,13 +373,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		})
 		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -419,6 +406,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
 		localDoguRepo := NewMockLocalDoguRepo(t)
 		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		mocksExpectWriteEvent(clientMock, eventRecorderMock)
 
 		warpMenuConfig := config.Configuration{
 			Support: []config.SupportSource{
@@ -446,13 +436,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		})
 		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
 
-		reconciler := NewWarpMenuReconciler(
-			clientMock,
-			globalConfigRepoMock,
-			doguVersionRegistryMock,
-			localDoguRepo,
-			warpMenuPath,
-		)
+		reconciler := NewWarpMenuReconciler(clientMock, globalConfigRepoMock, doguVersionRegistryMock, localDoguRepo, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -505,7 +489,7 @@ func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []te
 
 func mockExpectGetWarpMenuConfig(t *testing.T, clientMock *mockK8sClient, warpMenuConfig config.Configuration) {
 	clientMock.EXPECT().
-		Get(mock.Anything, mock.Anything, mock.Anything).
+		Get(mock.Anything, mock.Anything, mock.AnythingOfType("*v1.ConfigMap")).
 		Run(func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) {
 			warpMenuConfigAsString, err := yaml.Marshal(warpMenuConfig)
 			require.NoError(t, err)
@@ -517,6 +501,15 @@ func mockExpectGetWarpMenuConfig(t *testing.T, clientMock *mockK8sClient, warpMe
 			configMap.Data = data
 		}).
 		Return(nil)
+}
+
+func mocksExpectWriteEvent(clientMock *mockK8sClient, eventRecorderMock *mockEventRecorder) {
+	clientMock.EXPECT().
+		Get(mock.Anything, types2.NamespacedName{Name: testDeploymentName, Namespace: testNamespace}, mock.AnythingOfType("*v1.Deployment")).
+		Return(nil)
+
+	eventRecorderMock.EXPECT().Event(mock.Anything, v1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
+
 }
 
 func findCategoryByTitle(warpMenuCategories []testutils.WarpMenuCategory, title string) (testutils.WarpMenuCategory, bool) {

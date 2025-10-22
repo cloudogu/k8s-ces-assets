@@ -148,6 +148,8 @@ spec:
           value: {{ quote .Values.nginx.warp.mountPath | default "/var/www/html/warp/"}}
         - name: LOG_LEVEL
           value: {{ quote .Values.nginx.warp.env.logLevel | default "info"}}
+        - name: DEPLOYMENT_NAME
+          value: {{ include "k8s-ces-assets.name" . }}-nginx
       - name: maintenance
         image: "{{ .Values.nginx.maintenance.image.registry }}/{{ .Values.nginx.maintenance.image.repository }}:{{ .Values.nginx.maintenance.image.tag }}"
         imagePullPolicy: {{ .Values.nginx.maintenance.imagePullPolicy }}
