@@ -10,13 +10,12 @@ import (
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
 	appsv1 "k8s.io/api/apps/v1"
-	types2 "k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
 	corev1 "k8s.io/api/core/v1"
+	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
@@ -49,14 +48,14 @@ func NewWarpMenuReconciler(client k8sClient, globalConfigRepo GlobalConfigReposi
 }
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	logger.Info("WarpMenuConfigReconciler reconcile()")
+
 	deployment := &appsv1.Deployment{}
 	err := r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
 	if err != nil {
 		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-nginx", err)
 	}
-
-	logger := log.FromContext(ctx)
-	logger.Info("WarpMenuConfigReconciler reconcile()")
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
