@@ -46,10 +46,12 @@
   {{- end }}
 {{- end }}
 
+{{- $deploymentName := print (include "k8s-ces-assets.name" .) "-nginx" -}}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "k8s-ces-assets.name" . }}-nginx
+  name: {{ $deploymentName }}
   labels:
   {{- include "k8s-ces-assets.labels" . | nindent 4 }}
 spec:
@@ -149,7 +151,7 @@ spec:
         - name: LOG_LEVEL
           value: {{ quote .Values.nginx.warp.env.logLevel | default "info"}}
         - name: DEPLOYMENT_NAME
-          value: {{ include "k8s-ces-assets.name" . }}-nginx
+          value: {{ $deploymentName }}
       - name: maintenance
         image: "{{ .Values.nginx.maintenance.image.registry }}/{{ .Values.nginx.maintenance.image.repository }}:{{ .Values.nginx.maintenance.image.tag }}"
         imagePullPolicy: {{ .Values.nginx.maintenance.imagePullPolicy }}

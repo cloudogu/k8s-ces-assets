@@ -48,30 +48,41 @@ func init() {
 }
 
 func main() {
-	if err := startManager(); err != nil {
+	if err := start(); err != nil {
 		logger.Error(err, "manager produced an error")
 		os.Exit(1)
 	}
 }
 
-func startManager() error {
+func start() error {
 	logger.Info("Starting k8s-ces-assets warp discovery...")
 
 	watchNamespace, err := config.ReadWatchNamespace()
 	if err != nil {
-		return fmt.Errorf("failed to read watch namespace: %w", err)
+		return fmt.Errorf("read config value 'watch namespace': %w", err)
 	}
 
 	options := getK8sManagerOptions(watchNamespace)
 
 	warpMenuManager, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
-		return fmt.Errorf("failed to create new manager: %w", err)
+		return fmt.Errorf("create manager: %w", err)
 	}
 
+	if err = setupWarpMenuReconciler(warpMenuManager, watchNamespace); err != nil {
+		return fmt.Errorf("setup up reconciler: %w", err)
+	}
+
+	if err = startManager(warpMenuManager); err != nil {
+		return fmt.Errorf("start manager: %w", err)
+	}
+	return nil
+}
+
+func setupWarpMenuReconciler(warpMenuManager k8sManager, watchNamespace string) error {
 	clientset, err := getK8sClientSet(warpMenuManager.GetConfig())
 	if err != nil {
-		return fmt.Errorf("failed to create k8s client set: %w", err)
+		return fmt.Errorf("create k8s client set: %w", err)
 	}
 
 	client := warpMenuManager.GetClient()
@@ -82,13 +93,13 @@ func startManager() error {
 
 	deploymentName, err := config.ReadDeploymentName()
 	if err != nil {
-		return fmt.Errorf("failed to read deployment name: %w", err)
+		return fmt.Errorf("read config value 'deployment name': %w", err)
 	}
 	eventRecorder := warpMenuManager.GetEventRecorderFor(deploymentName)
 
 	warpMenuPath, err := config.ReadWarpPath()
 	if err != nil {
-		return fmt.Errorf("read warp menu path from config: %w", err)
+		return fmt.Errorf("read config value 'warp path': %w", err)
 	}
 	reconciler := warpCtrl.NewWarpMenuReconciler(client, globalConfigRepo, doguVersionRegistry, localDoguRepo, eventRecorder, warpMenuPath, deploymentName)
 	err = reconciler.SetupWithManager(warpMenuManager)
@@ -96,18 +107,15 @@ func startManager() error {
 		return fmt.Errorf("setup reconciler with manager: %w", err)
 	}
 
-	if err = startK8sManager(warpMenuManager); err != nil {
-		return fmt.Errorf("failure at warp assets manager: %w", err)
-	}
 	return nil
 }
 
-func startK8sManager(k8sManager k8sManager) error {
-	logger.Info("starting service discovery manager")
+func startManager(k8sManager k8sManager) error {
+	logger.Info("starting manager")
 
 	err := k8sManager.Start(ctrl.SetupSignalHandler())
 	if err != nil {
-		return fmt.Errorf("failed to start service discovery manager: %w", err)
+		return fmt.Errorf("start manager: %w", err)
 	}
 
 	return nil
@@ -116,7 +124,7 @@ func startK8sManager(k8sManager k8sManager) error {
 func getK8sClientSet(config *rest.Config) (*kubernetes.Clientset, error) {
 	k8sClientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client set: %w", err)
+		return nil, fmt.Errorf("create k8s client set: %w", err)
 	}
 
 	return k8sClientSet, nil
