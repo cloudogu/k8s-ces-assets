@@ -1,9 +1,9 @@
 apiVersion: v1
 values:
   images:
-    manager: docker.io/cloudogu/k8s-ces-assets:1.0.2
-    warp: docker.io/cloudogu/k8s-ces-assets-warp:1.0.2
-    maintenance: docker.io/cloudogu/k8s-ces-assets-maintenance:1.0.2
+    manager: docker.io/cloudogu/k8s-ces-assets:1.0.3
+    warp: docker.io/cloudogu/k8s-ces-assets-warp:1.0.3
+    maintenance: docker.io/cloudogu/k8s-ces-assets-maintenance:1.0.3
 patches:
   values.yaml:
     nginx:
