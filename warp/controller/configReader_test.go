@@ -220,8 +220,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		globalConfig := registryconfig.GlobalConfig{
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"/path/to/external/link/Cloudogu":               "[\"lorem\", \"ipsum\"]",
-				globalBlockWarpSupportCategoryConfigurationKey:  "false",
-				globalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalBlockWarpSupportCategoryConfigurationKey:  "false",
+				GlobalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
@@ -263,8 +263,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		globalConfig := registryconfig.GlobalConfig{
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"disabled_warpmenu_support_entries":             "[\"lorem\", \"ipsum\"]",
-				globalBlockWarpSupportCategoryConfigurationKey:  "false",
-				globalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalBlockWarpSupportCategoryConfigurationKey:  "false",
+				GlobalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
@@ -302,8 +302,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"/path/to/external/link/Cloudogu":               "[\"lorem\", \"ipsum\"]",
 				"disabled_warpmenu_support_entries":             "[\"lorem\", \"ipsum\"]",
-				globalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
-				globalBlockWarpSupportCategoryConfigurationKey:  "false",
+				GlobalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalBlockWarpSupportCategoryConfigurationKey:  "false",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
@@ -335,8 +335,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"/path/to/external/link/Cloudogu":               "[\"lorem\", \"ipsum\"]",
 				"disabled_warpmenu_support_entries":             "[]",
-				globalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
-				globalBlockWarpSupportCategoryConfigurationKey:  "false",
+				GlobalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalBlockWarpSupportCategoryConfigurationKey:  "false",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
@@ -366,8 +366,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		globalConfig := registryconfig.GlobalConfig{
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"/path/to/external/link/Cloudogu":               "[\"lorem\", \"ipsum\"]",
-				globalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
-				globalBlockWarpSupportCategoryConfigurationKey:  "false",
+				GlobalAllowedWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalBlockWarpSupportCategoryConfigurationKey:  "false",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
@@ -389,8 +389,8 @@ func TestConfigReader_readFromConfig(t *testing.T) {
 		globalConfig := registryconfig.GlobalConfig{
 			Config: registryconfig.CreateConfig(registryconfig.Entries{
 				"externals/ext1": "external",
-				globalAllowedWarpSupportEntriesConfigurationKey:  "[\"lorem\", \"ipsum\"]",
-				globalDisabledWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
+				GlobalAllowedWarpSupportEntriesConfigurationKey:  "[\"lorem\", \"ipsum\"]",
+				GlobalDisabledWarpSupportEntriesConfigurationKey: "[\"lorem\", \"ipsum\"]",
 			}),
 		}
 		mockGlobalConfigRepo.EXPECT().Get(testCtx).Return(globalConfig, nil)
