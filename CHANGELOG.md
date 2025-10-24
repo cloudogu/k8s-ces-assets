@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.3] - 2025-10-24
+
 ### Fixed
 - [#9] warp menu doesn't contain dogus because of an error while watching config maps
 
