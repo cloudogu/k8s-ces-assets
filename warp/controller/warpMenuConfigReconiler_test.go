@@ -12,7 +12,6 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	config2 "github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/warp-assets/config"
-	"github.com/cloudogu/warp-assets/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,7 @@ const (
 	testNamespace      = "aNamespace"
 )
 
-func TestWarpMenuReconcile(t *testing.T) {
+func TestWarpMenuEventFilterPredicate(t *testing.T) {
 	checkEventFilterPredicate := func(configMapName string, shouldBeWatched bool) {
 		configMap := newConfigMapWithName(configMapName)
 		funcs := eventFilterPredicate()
@@ -56,6 +55,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 	checkEventFilterPredicate(globalConfigMapName, true)
 	checkEventFilterPredicate(config.WarpConfigMap, true)
 	checkEventFilterPredicate("a-config-map", false)
+}
+
+func TestWarpMenuReconcile(t *testing.T) {
 
 	t.Run("should create menu entries configured in global config map", func(t *testing.T) {
 		clientMock := newMockK8sClient(t)
@@ -97,7 +99,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.Equal(t, 1, len(warpMenuCategories))
 		assert.Equal(t, "News", warpMenuCategories[0].Title)
 
-		expectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		expectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "Daily Tech News",
 				DisplayName: "Test",
@@ -147,7 +149,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.Equal(t, 1, len(warpMenuCategories))
 		assert.Equal(t, "Support", warpMenuCategories[0].Title)
 
-		expectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		expectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "id1",
 				DisplayName: "",
@@ -222,7 +224,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
 		assert.True(t, found)
-		devAppsExpectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "Dogu 1 Description",
 				DisplayName: "Dogu 1",
@@ -234,7 +236,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		adminWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "Admin")
 		assert.True(t, found)
-		adminExpectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		adminExpectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "Dogu 2 Description",
 				DisplayName: "Dogu 2",
@@ -383,7 +385,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.Equal(t, 1, len(warpMenuCategories))
 		assert.Equal(t, "Support", warpMenuCategories[0].Title)
 
-		expectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		expectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "id1",
 				DisplayName: "",
@@ -446,7 +448,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.Equal(t, 1, len(warpMenuCategories))
 		assert.Equal(t, "Support", warpMenuCategories[0].Title)
 
-		expectedWarpMenuEntries := []testutils.WarpMenuEntry{
+		expectedWarpMenuEntries := []WarpMenuEntry{
 			{
 				Title:       "id2",
 				DisplayName: "",
@@ -476,11 +478,11 @@ func multiline(parts ...string) string {
 	return strings.Join(parts, "\n")
 }
 
-func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []testutils.WarpMenuCategory {
+func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []WarpMenuCategory {
 	data, err := os.ReadFile(warpMenuPath + "/menu.json")
 	require.NoError(t, err)
 
-	warpMenuCategories := &[]testutils.WarpMenuCategory{}
+	warpMenuCategories := &[]WarpMenuCategory{}
 	err = json.Unmarshal(data, warpMenuCategories)
 	require.NoError(t, err)
 
@@ -512,13 +514,13 @@ func mocksExpectWriteEvent(clientMock *mockK8sClient, eventRecorderMock *mockEve
 
 }
 
-func findCategoryByTitle(warpMenuCategories []testutils.WarpMenuCategory, title string) (testutils.WarpMenuCategory, bool) {
+func findCategoryByTitle(warpMenuCategories []WarpMenuCategory, title string) (WarpMenuCategory, bool) {
 	for _, cat := range warpMenuCategories {
 		if cat.Title == title {
 			return cat, true
 		}
 	}
-	return testutils.WarpMenuCategory{}, false
+	return WarpMenuCategory{}, false
 }
 
 func newSimpleNameToDoguMap(t *testing.T, dogus []*core.Dogu) ([]dogu.SimpleNameVersion, map[dogu.SimpleNameVersion]*core.Dogu) {
