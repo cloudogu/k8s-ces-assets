@@ -3,24 +3,26 @@ package config
 import (
 	"context"
 	"fmt"
+	"os"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	warpConfigMap = "k8s-ces-warp-config"
+	WarpConfigMap = "k8s-ces-warp-config"
 	MenuConfigMap = "k8s-ces-menu-json"
 	StageLocal    = "local"
 	DevConfigPath = "k8s/dev-resources/k8s-ces-warp-config.yaml"
 	StageEnvVar   = "STAGE"
 	// namespaceEnvVar defines the name of the environment variables given into the service discovery to define the
 	// namespace that should be watched by the service discovery.
-	namespaceEnvVar = "WATCH_NAMESPACE"
-	warpPathEnvVar  = "WARP_PATH"
+	namespaceEnvVar      = "WATCH_NAMESPACE"
+	warpPathEnvVar       = "WARP_PATH"
+	deploymentNameEnvVar = "DEPLOYMENT_NAME"
 )
 
 var (
@@ -84,7 +86,7 @@ func readWarpConfigFromCluster(ctx context.Context, client client.Client, namesp
 	configmap := &corev1.ConfigMap{}
 	objectKey := types.NamespacedName{
 		Namespace: namespace,
-		Name:      warpConfigMap,
+		Name:      WarpConfigMap,
 	}
 	err := client.Get(ctx, objectKey, configmap)
 	if err != nil {
@@ -119,4 +121,14 @@ func ReadWarpPath() (string, error) {
 	logger.Info(fmt.Sprintf("found target warp path: [%s]", warpPath))
 
 	return warpPath, nil
+}
+
+func ReadDeploymentName() (string, error) {
+	deploymentName, found := os.LookupEnv(deploymentNameEnvVar)
+	if !found {
+		return "", fmt.Errorf("failed to read deployment name from environment variable [%s], please set the variable and try again", deploymentNameEnvVar)
+	}
+	logger.Info(fmt.Sprintf("found target depolyment name: [%s]", deploymentName))
+
+	return deploymentName, nil
 }

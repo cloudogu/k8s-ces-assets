@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	libconfig "github.com/cloudogu/k8s-registry-lib/config"
-	types2 "github.com/cloudogu/warp-assets/controller/types"
 	"sort"
 	"strconv"
 	"strings"
 
+	libconfig "github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/warp-assets/config"
+	types2 "github.com/cloudogu/warp-assets/controller/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/pkg/errors"
@@ -26,9 +26,25 @@ type ConfigReader struct {
 	externalConverter   ExternalConverter
 }
 
-const globalBlockWarpSupportCategoryConfigurationKey = "block_warpmenu_support_category"
-const globalDisabledWarpSupportEntriesConfigurationKey = "disabled_warpmenu_support_entries"
-const globalAllowedWarpSupportEntriesConfigurationKey = "allowed_warpmenu_support_entries"
+const GlobalBlockWarpSupportCategoryConfigurationKey = "block_warpmenu_support_category"
+const GlobalDisabledWarpSupportEntriesConfigurationKey = "disabled_warpmenu_support_entries"
+const GlobalAllowedWarpSupportEntriesConfigurationKey = "allowed_warpmenu_support_entries"
+
+func NewConfigReader(
+	warpMenuConfiguration *config.Configuration,
+	globalConfigRepo GlobalConfigRepository,
+	doguVersionRegistry DoguVersionRegistry,
+	localDoguRepo LocalDoguRepo,
+) *ConfigReader {
+	return &ConfigReader{
+		configuration:       warpMenuConfiguration,
+		globalConfigRepo:    globalConfigRepo,
+		doguVersionRegistry: doguVersionRegistry,
+		localDoguRepo:       localDoguRepo,
+		doguConverter:       &types2.DoguConverter{},
+		externalConverter:   &types2.ExternalConverter{},
+	}
+}
 
 // Read reads sources specified in a configuration and build warp menu categories for them.
 func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Configuration) (types2.Categories, error) {
@@ -51,19 +67,19 @@ func (reader *ConfigReader) Read(ctx context.Context, configuration *config.Conf
 
 	readKeyErrorFmt := "Warning, could not read Key: %v. Err: %v"
 
-	isSupportCategoryBlocked, err := reader.readBool(ctx, globalBlockWarpSupportCategoryConfigurationKey)
+	isSupportCategoryBlocked, err := reader.readBool(ctx, GlobalBlockWarpSupportCategoryConfigurationKey)
 	if err != nil {
-		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalBlockWarpSupportCategoryConfigurationKey, err))
+		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, GlobalBlockWarpSupportCategoryConfigurationKey, err))
 	}
 
-	disabledSupportEntries, err := reader.readStrings(ctx, globalDisabledWarpSupportEntriesConfigurationKey)
+	disabledSupportEntries, err := reader.readStrings(ctx, GlobalDisabledWarpSupportEntriesConfigurationKey)
 	if err != nil {
-		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalDisabledWarpSupportEntriesConfigurationKey, err))
+		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, GlobalDisabledWarpSupportEntriesConfigurationKey, err))
 	}
 
-	allowedSupportEntries, err := reader.readStrings(ctx, globalAllowedWarpSupportEntriesConfigurationKey)
+	allowedSupportEntries, err := reader.readStrings(ctx, GlobalAllowedWarpSupportEntriesConfigurationKey)
 	if err != nil {
-		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, globalAllowedWarpSupportEntriesConfigurationKey, err))
+		ctrl.Log.Info(fmt.Sprintf(readKeyErrorFmt, GlobalAllowedWarpSupportEntriesConfigurationKey, err))
 	}
 
 	supportCategory := reader.readSupport(configuration.Support, isSupportCategoryBlocked, disabledSupportEntries, allowedSupportEntries)
