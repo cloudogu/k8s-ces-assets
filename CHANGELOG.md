@@ -6,11 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [v1.0.3] - 2025-10-24
+## [v1.0.4] - 2025-11-27
+### Changed
+- [#11] define start order after ces-gateway
 
+## [v1.0.3] - 2025-10-24
 ### Fixed
 - [#9] warp menu doesn't contain dogus because of an error while watching config maps
-
 
 ## [v1.0.2] - 2025-10-01
 ### Fixed
