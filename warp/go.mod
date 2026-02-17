@@ -2,8 +2,6 @@ module github.com/cloudogu/warp-assets
 
 go 1.26.0
 
-toolchain go1.26.0
-
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/ces-commons-lib v0.2.0
