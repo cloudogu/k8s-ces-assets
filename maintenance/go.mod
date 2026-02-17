@@ -1,8 +1,6 @@
 module github.com/cloudogu/maintenance-assets
 
-go 1.24.3
-
-toolchain go1.24.6
+go 1.26.0
 
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
