@@ -3,16 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	"github.com/cloudogu/maintenance-assets/config"
 	maintenance2 "github.com/cloudogu/maintenance-assets/controller"
 	"github.com/cloudogu/maintenance-assets/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/rest"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -64,13 +63,7 @@ func startManager() error {
 		return fmt.Errorf("failed to create new manager: %w", err)
 	}
 
-	clientset, err := getK8sClientSet(serviceDiscManager.GetConfig())
-	if err != nil {
-		return fmt.Errorf("failed to create k8s client set: %w", err)
-	}
-	configMapInterface := clientset.CoreV1().ConfigMaps(watchNamespace)
-
-	globalConfigRepo := repository.NewGlobalConfigRepository(configMapInterface)
+	globalConfigRepo := repository.NewMaintenanceModeAdapter("k8s-ces-assets", serviceDiscManager.GetClient(), watchNamespace)
 
 	if err := handleErrorPageCreation(serviceDiscManager, globalConfigRepo); err != nil {
 		return fmt.Errorf("failed to create error-page creator: %w", err)
@@ -93,15 +86,6 @@ func startK8sManager(k8sManager k8sManager) error {
 	return nil
 }
 
-func getK8sClientSet(config *rest.Config) (*kubernetes.Clientset, error) {
-	k8sClientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create k8s client set: %w", err)
-	}
-
-	return k8sClientSet, nil
-}
-
 func getK8sManagerOptions(watchNamespace string) manager.Options {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8082", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8083", "The address the probe endpoint binds to.")
@@ -122,10 +106,9 @@ func getK8sManagerOptions(watchNamespace string) manager.Options {
 	}
 }
 
-func handleErrorPageCreation(k8sManager k8sManager, globalConfigRepo maintenance2.GlobalConfigRepository) error {
+func handleErrorPageCreation(k8sManager k8sManager, maintenanceAdapter maintenance2.MaintenanceAdapter) error {
 	maintenanceReconciler := &maintenance2.MaintenanceReconciler{
-		Client:             k8sManager.GetClient(),
-		GlobalConfigGetter: globalConfigRepo,
+		Adapter: maintenanceAdapter,
 	}
 
 	if err := maintenanceReconciler.SetupWithManager(k8sManager); err != nil {
