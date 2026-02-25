@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.18.2
-	github.com/cloudogu/k8s-registry-lib v0.6.0
+	github.com/cloudogu/k8s-registry-lib v1.0.0
 	github.com/go-logr/logr v1.4.3
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.11.1
@@ -15,12 +15,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.23.1
 )
 
-replace github.com/cloudogu/k8s-registry-lib v0.6.0 => github.com/cloudogu/k8s-registry-lib v0.2.2-0.20260219140143-05cf54f445aa
-
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cloudogu/ces-commons-lib v0.2.0 // indirect
+	github.com/cloudogu/ces-commons-lib v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
