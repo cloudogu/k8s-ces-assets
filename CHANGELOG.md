@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.0] - 2026-02-26
+> [!IMPORTANT]
+> Breaking change!
+> New compatible versions of k8s-ces-service-discovery, k8s-backup-operator and ces-exporter are required.
+
+### Changed
+- [#15] Use the new maintenance ConfigMap
+  - Previously, the maintenance mode was read from the global config
+
 ## [v1.0.5] - 2026-02-17
 ### Security
 - [#17] Fix Go stdlib CVE-2025-68121
