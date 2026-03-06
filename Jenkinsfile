@@ -1,6 +1,6 @@
 #!groovy
 
-@Library(['github.com/cloudogu/ces-build-lib@3.0.0'])
+@Library(['github.com/cloudogu/ces-build-lib@5.1.0'])
 import com.cloudogu.ces.cesbuildlib.*
 
 // Creating necessary git objects
@@ -12,7 +12,7 @@ github = new GitHub(this, git)
 changelog = new Changelog(this)
 Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
-goVersion = "1.24.6"
+goVersion = "1.26.0"
 makefile = new Makefile(this)
 
 // Configuration of repository

@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.1] - 2026-03-04
+### Changed
+- [#19] Allow k8s-ces-gateway in version range 3.x.x 
+
+## [v2.0.0] - 2026-02-26
+> [!IMPORTANT]
+> Breaking change!
+> New compatible versions of k8s-ces-service-discovery, k8s-backup-operator and ces-exporter are required.
+
+### Changed
+- [#15] Use the new maintenance ConfigMap
+  - Previously, the maintenance mode was read from the global config
+
+## [v1.0.5] - 2026-02-17
+### Security
+- [#17] Fix Go stdlib CVE-2025-68121
+
 ## [v1.0.4] - 2025-11-27
 ### Changed
 - [#11] define start order after ces-gateway
