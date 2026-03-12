@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v2.0.2] - 2026-03-12
+### Changed
+- [#13] added custom 401 and 403 error pages
+
 ## [v2.0.1] - 2026-03-04
 ### Changed
 - [#19] Allow k8s-ces-gateway in version range 3.x.x 
