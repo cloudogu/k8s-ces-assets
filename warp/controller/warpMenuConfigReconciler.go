@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -54,7 +56,14 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("read warp menu configuration: %w", err)
 	}
 
-	categories, err := r.createCategories(ctx, warpMenuConfiguration)
+	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
+	err = r.client.List(ctx, warpMenuEntries)
+	if err != nil {
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %w", err)
+		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
+	}
+
+	categories, err := r.createCategories(&warpMenuConfiguration.Order, warpMenuEntries)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Creating warp menu categories failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("create categories: %w", err)
@@ -64,6 +73,12 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
+	}
+
+	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries, req)
+	if err != nil {
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %w", req.Name, err)
+		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
 	r.eventRecorder.Event(deployment, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
@@ -77,17 +92,9 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *WarpMenuConfigReconciler) createCategories(ctx context.Context, warpMenuConfiguration *config.Configuration) (types.Categories, error) {
-	//configReader := NewConfigReader(
-	//	warpMenuConfiguration,
-	//	r.globalConfigRepo,
-	//	r.doguVersionRegistry,
-	//	r.localDoguRepo,
-	//)
-	//
-	//return configReader.Read(ctx, warpMenuConfiguration)
-	// TODO: reimplement
-	return types.Categories{}, nil
+func (r *WarpMenuConfigReconciler) createCategories(order *config.Order, menuEntries *warpmenu.WarpMenuEntryList) (types.Categories, error) {
+	menuBuilder := WarpMenuBuilder{order: *order}
+	return menuBuilder.buildCategories(menuEntries)
 }
 
 func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories) error {
@@ -111,4 +118,35 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories
 	}
 
 	return nil
+}
+
+func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entries *warpmenu.WarpMenuEntryList, req ctrl.Request) error {
+	for _, entry := range entries.Items {
+		if entry.Name == req.Name && entry.Namespace == req.Namespace {
+			condition := r.createStatusCondition(entry.Spec.Disabled)
+			entry.Status.Conditions = append(entry.Status.Conditions, condition)
+			err := r.client.Status().Update(ctx, &entry)
+			return err
+		}
+	}
+	return fmt.Errorf("warp menu entry %s not found", req.Name)
+}
+
+func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool) v1.Condition {
+	var condition v1.Condition
+	if disabled {
+		condition = v1.Condition{
+			Reason:  warpmenu.ReasonEntryHidden,
+			Message: "Warp menu entry has been hidden, because it is disabled.",
+		}
+	} else {
+		condition = v1.Condition{
+			Reason:  warpmenu.ReasonEntryRendered,
+			Message: "Warp menu entry has been rendered.",
+		}
+	}
+	condition.Type = warpmenu.ConditionReady
+	condition.Status = v1.ConditionTrue
+	condition.LastTransitionTime = v1.NewTime(time.Now())
+	return condition
 }
