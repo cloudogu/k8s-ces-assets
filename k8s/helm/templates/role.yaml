@@ -38,3 +38,20 @@ rules:
     verbs:
       - create
       - patch
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries/status
+    verbs:
+      - get
+      - update
+      - patch
+    
