@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/warp-assets/controller/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	controllerruntime "sigs.k8s.io/controller-runtime"
 )
 
 func TestBuildWarpMenu(t *testing.T) {
@@ -27,7 +28,7 @@ func TestBuildWarpMenu(t *testing.T) {
 
 		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
 			Items: []warpmenu.WarpMenuEntry{
-				buildWarpMenuEntry("Category", "/jenkins", "Jenkins DE", "Jenkins EN", false),
+				buildWarpMenuEntry("dogu", "Category", "/jenkins", "Jenkins DE", "Jenkins EN", false),
 			},
 		})
 		if err != nil {
@@ -43,9 +44,9 @@ func TestBuildWarpMenu(t *testing.T) {
 
 		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
 			Items: []warpmenu.WarpMenuEntry{
-				buildWarpMenuEntry("Category A", "/alpha", "Jenkins A", "Jenkins A EN", false),
-				buildWarpMenuEntry("Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
-				buildWarpMenuEntry("Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+				buildWarpMenuEntry("dogu", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", false),
+				buildWarpMenuEntry("dogu", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
 			},
 		})
 		if err != nil {
@@ -64,9 +65,9 @@ func TestBuildWarpMenu(t *testing.T) {
 
 		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
 			Items: []warpmenu.WarpMenuEntry{
-				buildWarpMenuEntry("Category A", "/alpha", "Jenkins A", "Jenkins A EN", true),
-				buildWarpMenuEntry("Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
-				buildWarpMenuEntry("Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+				buildWarpMenuEntry("dogu", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", true),
+				buildWarpMenuEntry("dogu", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
 			},
 		})
 		if err != nil {
@@ -93,8 +94,12 @@ func checkCategories(t *testing.T, categories types.Categories, expectedLength i
 	}
 }
 
-func buildWarpMenuEntry(category, path, displayNameDe, displayNameEn string, disabled bool) warpmenu.WarpMenuEntry {
+func buildWarpMenuEntry(name, category, path, displayNameDe, displayNameEn string, disabled bool) warpmenu.WarpMenuEntry {
 	return warpmenu.WarpMenuEntry{
+		ObjectMeta: controllerruntime.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
 		Spec: warpmenu.WarpMenuEntrySpec{
 			Category: category,
 			Path:     path,
