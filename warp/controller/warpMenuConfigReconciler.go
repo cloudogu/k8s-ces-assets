@@ -5,45 +5,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
+	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
-	globalConfigMapName              = "global-config"
 	warpMenuUpdateEventReason        = "WarpMenu"
 	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
 )
 
 type WarpMenuConfigReconciler struct {
-	client              k8sClient
-	globalConfigRepo    GlobalConfigRepository
-	doguVersionRegistry DoguVersionRegistry
-	localDoguRepo       LocalDoguRepo
-	eventRecorder       eventRecorder
-	warpMenuPath        string
-	deploymentName      string
+	client         k8sClient
+	eventRecorder  eventRecorder
+	warpMenuPath   string
+	deploymentName string
 }
 
-func NewWarpMenuReconciler(client k8sClient, globalConfigRepo GlobalConfigRepository, doguVersionRegistry DoguVersionRegistry, localDoguRepo LocalDoguRepo, eventRecoder eventRecorder, warpMenuPath string, deploymentName string) *WarpMenuConfigReconciler {
+func NewWarpMenuReconciler(client k8sClient, eventRecoder eventRecorder, warpMenuPath string, deploymentName string) *WarpMenuConfigReconciler {
 	return &WarpMenuConfigReconciler{
-		client:              client,
-		globalConfigRepo:    globalConfigRepo,
-		doguVersionRegistry: doguVersionRegistry,
-		localDoguRepo:       localDoguRepo,
-		eventRecorder:       eventRecoder,
-		warpMenuPath:        warpMenuPath,
-		deploymentName:      deploymentName,
+		client:         client,
+		eventRecorder:  eventRecoder,
+		warpMenuPath:   warpMenuPath,
+		deploymentName: deploymentName,
 	}
 }
 
@@ -81,42 +72,22 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&corev1.ConfigMap{}).
-		WithEventFilter(eventFilterPredicate()).
+		For(&warpmenu.WarpMenuEntry{}).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Complete(r)
 }
 
-func eventFilterPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
-			return isWatchedConfigMap(e.Object.GetName())
-		},
-		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
-			return isWatchedConfigMap(e.Object.GetName())
-		},
-		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-			return isWatchedConfigMap(e.ObjectOld.GetName())
-		},
-		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
-			return isWatchedConfigMap(e.Object.GetName())
-		},
-	}
-}
-
-func isWatchedConfigMap(configMapName string) bool {
-	isDoguSpecConfigMap := strings.HasPrefix(configMapName, "dogu-spec-")
-	return isDoguSpecConfigMap || configMapName == globalConfigMapName || configMapName == config.WarpConfigMap
-}
-
 func (r *WarpMenuConfigReconciler) createCategories(ctx context.Context, warpMenuConfiguration *config.Configuration) (types.Categories, error) {
-	configReader := NewConfigReader(
-		warpMenuConfiguration,
-		r.globalConfigRepo,
-		r.doguVersionRegistry,
-		r.localDoguRepo,
-	)
-
-	return configReader.Read(ctx, warpMenuConfiguration)
+	//configReader := NewConfigReader(
+	//	warpMenuConfiguration,
+	//	r.globalConfigRepo,
+	//	r.doguVersionRegistry,
+	//	r.localDoguRepo,
+	//)
+	//
+	//return configReader.Read(ctx, warpMenuConfiguration)
+	// TODO: reimplement
+	return types.Categories{}, nil
 }
 
 func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories) error {
