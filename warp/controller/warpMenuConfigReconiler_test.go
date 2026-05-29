@@ -9,15 +9,18 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	config2 "github.com/cloudogu/k8s-registry-lib/config"
+	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 )
 
@@ -29,55 +32,30 @@ const (
 func TestWarpMenuReconcile(t *testing.T) {
 
 	t.Run("should create menu entries for dogus", func(t *testing.T) {
-		clientMock := newMockK8sClient(t)
-		globalConfigRepoMock := NewMockGlobalConfigRepository(t)
-		doguVersionRegistryMock := NewMockDoguVersionRegistry(t)
-		localDoguRepo := NewMockLocalDoguRepo(t)
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		clientMock := newClientBuilder(t).
+			WithRuntimeObjects(
+				&appsv1.Deployment{
+					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
+				},
+				getConfigMap(t, config.Configuration{}),
+				&warpmenu.WarpMenuEntryList{
+					Items: []warpmenu.WarpMenuEntry{
+						firstEntry,
+						buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false),
+					},
+				},
+			).
+			WithStatusSubresource(&firstEntry)
+
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
 
-		mocksExpectWriteEvent(clientMock, eventRecorderMock)
+		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
 
-		warpMenuConfig := config.Configuration{
-			Sources: []config.Source{
-				{
-					Path: "/dogu",
-					Type: "dogus",
-					Tag:  "show_in_warp_menu",
-				},
-			},
-		}
-		mockExpectGetWarpMenuConfig(t, clientMock, warpMenuConfig)
+		reconciler := NewWarpMenuReconciler(clientMock.Build(), eventRecorderMock, warpMenuPath, testDeploymentName)
 
-		globalConfig := config2.CreateGlobalConfig(config2.Entries{})
-		globalConfigRepoMock.EXPECT().Get(mock.Anything).Return(globalConfig, nil)
-
-		dogus := []*core.Dogu{
-			{
-				Name:        "repo/dogu_1",
-				Version:     "1.0.0-1",
-				DisplayName: "Dogu 1",
-				Description: "Dogu 1 Description",
-				Category:    "DevApps",
-				Tags:        []string{"show_in_warp_menu"},
-			},
-			{
-				Name:        "repo/dogu_2",
-				Version:     "2.0.0-1",
-				DisplayName: "Dogu 2",
-				Description: "Dogu 2 Description",
-				Category:    "Admin",
-				Tags:        []string{"show_in_warp_menu"},
-			},
-		}
-
-		doguSimpleVersionNames, simpleVersionNameToDoguMap := newSimpleNameToDoguMap(t, dogus)
-		doguVersionRegistryMock.EXPECT().GetCurrentOfAll(mock.Anything).Return(doguSimpleVersionNames, nil)
-		localDoguRepo.EXPECT().GetAll(mock.Anything, doguSimpleVersionNames).Return(simpleVersionNameToDoguMap, nil)
-
-		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
-
-		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "aConfigMap"}}
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
 		require.NoError(t, err)
 
@@ -88,7 +66,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.True(t, found)
 		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
 			{
-				Title:       "Dogu 1 Description",
+				Title:       "",
 				DisplayName: "Dogu 1",
 				Href:        "/dogu_1",
 				Target:      "self",
@@ -100,7 +78,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.True(t, found)
 		adminExpectedWarpMenuEntries := []WarpMenuEntry{
 			{
-				Title:       "Dogu 2 Description",
+				Title:       "",
 				DisplayName: "Dogu 2",
 				Href:        "/dogu_2",
 				Target:      "self",
@@ -118,7 +96,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
 
-		mocksExpectWriteEvent(clientMock, eventRecorderMock)
+		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
 
 		warpMenuConfig := config.Configuration{
 			Sources: []config.Source{
@@ -160,6 +138,17 @@ func TestWarpMenuReconcile(t *testing.T) {
 	})
 }
 
+func newClientBuilder(t *testing.T) *fake.ClientBuilder {
+	scheme := runtime.NewScheme()
+	err := appsv1.AddToScheme(scheme)
+	require.NoError(t, err)
+	err = corev1.AddToScheme(scheme)
+	require.NoError(t, err)
+	err = warpmenu.AddToScheme(scheme)
+	require.NoError(t, err)
+	return fake.NewClientBuilder().WithScheme(scheme)
+}
+
 func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []WarpMenuCategory {
 	data, err := os.ReadFile(warpMenuPath + "/menu.json")
 	require.NoError(t, err)
@@ -171,6 +160,20 @@ func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []Wa
 	return *warpMenuCategories
 }
 
+func getConfigMap(t *testing.T, warpMenuConfig config.Configuration) *corev1.ConfigMap {
+	warpMenuConfigAsString, err := yaml.Marshal(warpMenuConfig)
+	require.NoError(t, err)
+
+	configMap := corev1.ConfigMap{}
+	data := map[string]string{
+		"warp": string(warpMenuConfigAsString),
+	}
+	configMap.Name = "k8s-ces-warp-config"
+	configMap.Namespace = testNamespace
+	configMap.Data = data
+	return &configMap
+}
+
 func mockExpectGetWarpMenuConfig(t *testing.T, clientMock *mockK8sClient, warpMenuConfig config.Configuration) {
 	clientMock.EXPECT().
 		Get(mock.Anything, mock.Anything, mock.AnythingOfType("*v1.ConfigMap")).
@@ -178,22 +181,13 @@ func mockExpectGetWarpMenuConfig(t *testing.T, clientMock *mockK8sClient, warpMe
 			warpMenuConfigAsString, err := yaml.Marshal(warpMenuConfig)
 			require.NoError(t, err)
 
-			configMap := obj.(*v1.ConfigMap)
+			configMap := obj.(*corev1.ConfigMap)
 			data := map[string]string{
 				"warp": string(warpMenuConfigAsString),
 			}
 			configMap.Data = data
 		}).
 		Return(nil)
-}
-
-func mocksExpectWriteEvent(clientMock *mockK8sClient, eventRecorderMock *mockEventRecorder) {
-	clientMock.EXPECT().
-		Get(mock.Anything, types2.NamespacedName{Name: testDeploymentName, Namespace: testNamespace}, mock.AnythingOfType("*v1.Deployment")).
-		Return(nil)
-
-	eventRecorderMock.EXPECT().Event(mock.Anything, v1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
-
 }
 
 func findCategoryByTitle(warpMenuCategories []WarpMenuCategory, title string) (WarpMenuCategory, bool) {
