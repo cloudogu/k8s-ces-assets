@@ -30,7 +30,7 @@ const (
 
 func TestWarpMenuReconcile(t *testing.T) {
 
-	t.Run("should create menu entries for dogus", func(t *testing.T) {
+	t.Run("should create menu entries for warp menu entries", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		clientMock := newClientBuilder(t).
 			WithRuntimeObjects(
@@ -94,9 +94,11 @@ func TestWarpMenuReconcile(t *testing.T) {
 		}
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
+		verifyWarpMenuStatus(t, err, clientMock, request)
+
 	})
 
-	t.Run("Status update should work for dogus that already have a ready status", func(t *testing.T) {
+	t.Run("Status update should work for  warp menu entries that already have a ready status", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		_ = updateCRStatus(&firstEntry)
 		clientMock := newClientBuilder(t).
@@ -144,16 +146,92 @@ func TestWarpMenuReconcile(t *testing.T) {
 		}
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
 
-		updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
-		err = clientMock.Get(context.Background(), client.ObjectKey{Namespace: "aNamespace", Name: firstEntry.Name}, updatedWarpMenuEntry)
-		if err != nil {
-			t.Fatalf("Failed to fetch warpmenu after update: %v", err)
-		}
-		//Ensure that the status condition is set correctly
-		if len(updatedWarpMenuEntry.Status.Conditions) != 1 {
-			t.Errorf("Expected exactly 1 Status condition for the warp menu entry, but found %d !", len(updatedWarpMenuEntry.Status.Conditions))
-		}
+		verifyWarpMenuStatus(t, err, clientMock, request)
 	})
+
+	t.Run("should create menu entries when reconcile is called for warp menu entry deletion", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		clientMock := newClientBuilder(t).
+			WithRuntimeObjects(
+				&appsv1.Deployment{
+					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
+				},
+				getConfigMap(t, config.Configuration{}),
+				&warpmenu.WarpMenuEntryList{
+					Items: []warpmenu.WarpMenuEntry{
+						firstEntry,
+						buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false),
+					},
+				},
+			).
+			WithStatusSubresource(&firstEntry).
+			Build()
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: "DeletedWarpMenuEntry"}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		require.NoError(t, err)
+
+		warpMenuCategories := parseWarpMenuCategoriesFromJsonFile(t, warpMenuPath)
+		assert.Equal(t, 2, len(warpMenuCategories))
+
+		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
+		assert.True(t, found)
+		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
+			{
+				Title:       "",
+				DisplayName: "Dogu 1",
+				Href:        "/dogu_1",
+				Target:      "self",
+				Localization: map[string]string{
+					"de": "Dogu 1",
+					"en": "Dogu 1 en",
+				},
+			},
+		}
+		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
+
+		adminWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "Admin")
+		assert.True(t, found)
+		adminExpectedWarpMenuEntries := []WarpMenuEntry{
+			{
+				Title:       "",
+				DisplayName: "Dogu 2",
+				Href:        "/dogu_2",
+				Target:      "self",
+				Localization: map[string]string{
+					"de": "Dogu 2",
+					"en": "Dogu 2 en",
+				},
+			},
+		}
+		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
+
+	})
+
+}
+
+func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request) {
+	updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
+	err = clientMock.Get(context.Background(), request.NamespacedName, updatedWarpMenuEntry)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, updatedWarpMenuEntry.Status.Conditions)
+	assert.Equal(t, 1, len(updatedWarpMenuEntry.Status.Conditions))
+
+	expectedCondition := metav1.Condition{
+		Type:               warpmenu.ConditionReady,
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
+		Reason:             warpmenu.ReasonEntryRendered,
+		Message:            "Warp menu entry has been rendered.",
+	}
+	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
 }
 
 func newClientBuilder(t *testing.T) *fake.ClientBuilder {

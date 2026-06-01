@@ -130,7 +130,8 @@ func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context
 			return err
 		}
 	}
-	return fmt.Errorf("warp menu entry %s not found", req.Name)
+	log.FromContext(ctx).Info("Warp menu entry not found, the warp menu entry may be deleted.")
+	return nil
 }
 
 func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool) v1.Condition {
