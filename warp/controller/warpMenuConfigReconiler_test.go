@@ -13,9 +13,12 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/yaml"
 )
@@ -42,14 +45,15 @@ func TestWarpMenuReconcile(t *testing.T) {
 					},
 				},
 			).
-			WithStatusSubresource(&firstEntry)
+			WithStatusSubresource(&firstEntry).
+			Build()
 
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
 
 		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
 
-		reconciler := NewWarpMenuReconciler(clientMock.Build(), eventRecorderMock, warpMenuPath, testDeploymentName)
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
@@ -90,6 +94,65 @@ func TestWarpMenuReconcile(t *testing.T) {
 		}
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
+	})
+
+	t.Run("Status update should work for dogus that already have a ready status", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		_ = updateCRStatus(&firstEntry)
+		clientMock := newClientBuilder(t).
+			WithRuntimeObjects(
+				&appsv1.Deployment{
+					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
+				},
+				getConfigMap(t, config.Configuration{}),
+				&warpmenu.WarpMenuEntryList{
+					Items: []warpmenu.WarpMenuEntry{
+						firstEntry,
+					},
+				},
+			).
+			WithStatusSubresource(&firstEntry).
+			Build()
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		require.NoError(t, err)
+
+		warpMenuCategories := parseWarpMenuCategoriesFromJsonFile(t, warpMenuPath)
+		assert.Equal(t, 1, len(warpMenuCategories))
+
+		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
+		assert.True(t, found)
+		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
+			{
+				Title:       "",
+				DisplayName: "Dogu 1",
+				Href:        "/dogu_1",
+				Target:      "self",
+				Localization: map[string]string{
+					"de": "Dogu 1",
+					"en": "Dogu 1 en",
+				},
+			},
+		}
+		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
+
+		updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
+		err = clientMock.Get(context.Background(), client.ObjectKey{Namespace: "aNamespace", Name: firstEntry.Name}, updatedWarpMenuEntry)
+		if err != nil {
+			t.Fatalf("Failed to fetch warpmenu after update: %v", err)
+		}
+		//Ensure that the status condition is set correctly
+		if len(updatedWarpMenuEntry.Status.Conditions) != 1 {
+			t.Errorf("Expected exactly 1 Status condition for the warp menu entry, but found %d !", len(updatedWarpMenuEntry.Status.Conditions))
+		}
 	})
 }
 
@@ -136,4 +199,16 @@ func findCategoryByTitle(warpMenuCategories []WarpMenuCategory, title string) (W
 		}
 	}
 	return WarpMenuCategory{}, false
+}
+
+func updateCRStatus(cr *warpmenu.WarpMenuEntry) error {
+	newCondition := metav1.Condition{
+		Type:               "Ready",
+		Status:             metav1.ConditionTrue,
+		Reason:             warpmenu.ReasonEntryRendered,
+		Message:            "Warp menu entry has been rendered.",
+		LastTransitionTime: metav1.Now(),
+	}
+	meta.SetStatusCondition(&cr.Status.Conditions, newCondition)
+	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/warp-assets/controller/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -124,7 +125,7 @@ func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context
 	for _, entry := range entries.Items {
 		if entry.Name == req.Name && entry.Namespace == req.Namespace {
 			condition := r.createStatusCondition(entry.Spec.Disabled)
-			entry.Status.Conditions = append(entry.Status.Conditions, condition)
+			meta.SetStatusCondition(&entry.Status.Conditions, condition)
 			err := r.client.Status().Update(ctx, &entry)
 			return err
 		}
