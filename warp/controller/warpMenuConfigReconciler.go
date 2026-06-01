@@ -16,6 +16,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -58,7 +59,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
-	err = r.client.List(ctx, warpMenuEntries)
+	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(req.Namespace))
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %w", err)
 		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
