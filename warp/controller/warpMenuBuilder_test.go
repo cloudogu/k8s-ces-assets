@@ -40,24 +40,52 @@ func TestBuildWarpMenu(t *testing.T) {
 	})
 
 	t.Run("should build categories for a complex entry list", func(t *testing.T) {
-		builder := WarpMenuBuilder{config.Order{}}
+		builder := WarpMenuBuilder{config.Order{
+			"Category A": 100,
+			"Category B": 200,
+		}}
 
 		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
 			Items: []warpmenu.WarpMenuEntry{
-				buildWarpMenuEntry("dogu", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", false),
-				buildWarpMenuEntry("dogu", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
-				buildWarpMenuEntry("dogu", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", false),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu3", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
 			},
 		})
 		if err != nil {
 			require.NoError(t, err)
 		}
-		checkCategories(t, categories, 2, "Category A", "Category B")
-		assert.Equal(t, 2, len(categories[0].Entries))
-		checkEntry(t, categories[0].Entries[0], "Jenkins A", "Jenkins A EN", "/alpha")
-		checkEntry(t, categories[0].Entries[1], "Jenkins A2", "Jenkins A2 EN", "/aleph")
+		checkCategories(t, categories, 2, "Category B", "Category A")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
+		assert.Equal(t, 2, len(categories[1].Entries))
+		checkEntry(t, categories[1].Entries[0], "Jenkins A", "Jenkins A EN", "/alpha")
+		checkEntry(t, categories[1].Entries[1], "Jenkins A2", "Jenkins A2 EN", "/aleph")
+	})
+
+	t.Run("should build categories for an entry list with partly defined categories", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{
+			"Category A": 100,
+			"Category B": 200,
+		}}
+
+		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
+			Items: []warpmenu.WarpMenuEntry{
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Dogu A", "Dogu A EN", false),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Dogu B", "Dogu B EN", false),
+				buildWarpMenuEntry("dogu3", "Category C", "/gamma", "Dogu C", "Dogu C EN", false),
+			},
+		})
+		if err != nil {
+			require.NoError(t, err)
+		}
+		checkCategories(t, categories, 3, "Category B", "Category A", "Category C")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Dogu B", "Dogu B EN", "/beta")
 		assert.Equal(t, 1, len(categories[1].Entries))
-		checkEntry(t, categories[1].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
+		checkEntry(t, categories[1].Entries[0], "Dogu A", "Dogu A EN", "/alpha")
+		assert.Equal(t, 1, len(categories[2].Entries))
+		checkEntry(t, categories[2].Entries[0], "Dogu C", "Dogu C EN", "/gamma")
 	})
 
 	t.Run("should omit disabled entries", func(t *testing.T) {
@@ -65,9 +93,9 @@ func TestBuildWarpMenu(t *testing.T) {
 
 		categories, err := builder.buildCategories(&warpmenu.WarpMenuEntryList{
 			Items: []warpmenu.WarpMenuEntry{
-				buildWarpMenuEntry("dogu", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", true),
-				buildWarpMenuEntry("dogu", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
-				buildWarpMenuEntry("dogu", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", true),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu3", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
 			},
 		})
 		if err != nil {
