@@ -49,7 +49,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	deployment := &appsv1.Deployment{}
 	err := r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
 	if err != nil {
-		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", "k8s-ces-assets-nginx", err)
+		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", r.deploymentName, err)
 	}
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
