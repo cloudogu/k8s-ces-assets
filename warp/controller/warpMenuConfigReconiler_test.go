@@ -59,11 +59,34 @@ func TestWarpMenuReconcile(t *testing.T) {
 		adminExpectedWarpMenuEntries := getExpectedWarpMenuEntry2()
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
-		verifyWarpMenuStatus(t, err, clientMock, request)
+		verifyWarpMenuStatus(t, err, clientMock, request, false)
 
 	})
 
-	t.Run("Status update should work for  warp menu entries that already have a ready status", func(t *testing.T) {
+	t.Run("Status not create warp menu entries for the ones that are disabled", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", true)
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		require.NoError(t, err)
+
+		warpMenuCategories := parseWarpMenuCategoriesFromJsonFile(t, warpMenuPath)
+		assert.Equal(t, 0, len(warpMenuCategories))
+
+		_, found := findCategoryByTitle(warpMenuCategories, "DevApps")
+		assert.False(t, found)
+		verifyWarpMenuStatus(t, err, clientMock, request, true)
+	})
+
+	t.Run("Status update should work for warp menu entries that already have a ready status", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		_ = updateCRStatus(&firstEntry)
 		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
@@ -87,7 +110,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		devAppsExpectedWarpMenuEntries := getExpectedWarpMenuEntry1()
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
 
-		verifyWarpMenuStatus(t, err, clientMock, request)
+		verifyWarpMenuStatus(t, err, clientMock, request, false)
 	})
 
 	t.Run("should create menu entries when reconcile is called for warp menu entry deletion", func(t *testing.T) {
@@ -170,7 +193,7 @@ func getClientMock(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWa
 	return clientMock
 }
 
-func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request) {
+func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request, disabled bool) {
 	updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
 	err = clientMock.Get(context.Background(), request.NamespacedName, updatedWarpMenuEntry)
 	assert.NoError(t, err)
@@ -183,6 +206,10 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
 		Reason:             warpmenu.ReasonEntryRendered,
 		Message:            "Warp menu entry has been rendered.",
+	}
+	if disabled {
+		expectedCondition.Reason = warpmenu.ReasonEntryHidden
+		expectedCondition.Message = "Warp menu entry has been hidden, because it is disabled."
 	}
 	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
 }
