@@ -54,32 +54,32 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %w", err)
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %v", err)
 		return ctrl.Result{}, fmt.Errorf("read warp menu configuration: %w", err)
 	}
 
 	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
 	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(req.Namespace))
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %w", err)
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %v", err)
 		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
 	}
 
 	categories, err := r.createCategories(&warpMenuConfiguration.Order, warpMenuEntries)
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Creating warp menu categories failed: %w", err)
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Creating warp menu categories failed: %v", err)
 		return ctrl.Result{}, fmt.Errorf("create categories: %w", err)
 	}
 
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %w", err)
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %v", err)
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
 	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries, req)
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %w", req.Name, err)
+		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %v", req.Name, err)
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
