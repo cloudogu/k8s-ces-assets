@@ -32,21 +32,8 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	t.Run("should create menu entries for warp menu entries", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
-		clientMock := newClientBuilder(t).
-			WithRuntimeObjects(
-				&appsv1.Deployment{
-					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
-				},
-				getConfigMap(t, config.Configuration{}),
-				&warpmenu.WarpMenuEntryList{
-					Items: []warpmenu.WarpMenuEntry{
-						firstEntry,
-						buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false),
-					},
-				},
-			).
-			WithStatusSubresource(&firstEntry).
-			Build()
+		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
 
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
@@ -64,34 +51,12 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
 		assert.True(t, found)
-		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
-			{
-				Title:       "",
-				DisplayName: "Dogu 1",
-				Href:        "/dogu_1",
-				Target:      "self",
-				Localization: map[string]string{
-					"de": "Dogu 1",
-					"en": "Dogu 1 en",
-				},
-			},
-		}
+		devAppsExpectedWarpMenuEntries := getExpectedWarpMenuEntry1()
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
 
 		adminWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "Admin")
 		assert.True(t, found)
-		adminExpectedWarpMenuEntries := []WarpMenuEntry{
-			{
-				Title:       "",
-				DisplayName: "Dogu 2",
-				Href:        "/dogu_2",
-				Target:      "self",
-				Localization: map[string]string{
-					"de": "Dogu 2",
-					"en": "Dogu 2 en",
-				},
-			},
-		}
+		adminExpectedWarpMenuEntries := getExpectedWarpMenuEntry2()
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
 		verifyWarpMenuStatus(t, err, clientMock, request)
@@ -101,20 +66,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 	t.Run("Status update should work for  warp menu entries that already have a ready status", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		_ = updateCRStatus(&firstEntry)
-		clientMock := newClientBuilder(t).
-			WithRuntimeObjects(
-				&appsv1.Deployment{
-					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
-				},
-				getConfigMap(t, config.Configuration{}),
-				&warpmenu.WarpMenuEntryList{
-					Items: []warpmenu.WarpMenuEntry{
-						firstEntry,
-					},
-				},
-			).
-			WithStatusSubresource(&firstEntry).
-			Build()
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
 
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
@@ -132,18 +84,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
 		assert.True(t, found)
-		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
-			{
-				Title:       "",
-				DisplayName: "Dogu 1",
-				Href:        "/dogu_1",
-				Target:      "self",
-				Localization: map[string]string{
-					"de": "Dogu 1",
-					"en": "Dogu 1 en",
-				},
-			},
-		}
+		devAppsExpectedWarpMenuEntries := getExpectedWarpMenuEntry1()
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
 
 		verifyWarpMenuStatus(t, err, clientMock, request)
@@ -151,21 +92,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	t.Run("should create menu entries when reconcile is called for warp menu entry deletion", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
-		clientMock := newClientBuilder(t).
-			WithRuntimeObjects(
-				&appsv1.Deployment{
-					ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
-				},
-				getConfigMap(t, config.Configuration{}),
-				&warpmenu.WarpMenuEntryList{
-					Items: []warpmenu.WarpMenuEntry{
-						firstEntry,
-						buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false),
-					},
-				},
-			).
-			WithStatusSubresource(&firstEntry).
-			Build()
+		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
+
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
 
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
@@ -183,38 +112,62 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		devAppsWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "DevApps")
 		assert.True(t, found)
-		devAppsExpectedWarpMenuEntries := []WarpMenuEntry{
-			{
-				Title:       "",
-				DisplayName: "Dogu 1",
-				Href:        "/dogu_1",
-				Target:      "self",
-				Localization: map[string]string{
-					"de": "Dogu 1",
-					"en": "Dogu 1 en",
-				},
-			},
-		}
+		devAppsExpectedWarpMenuEntries := getExpectedWarpMenuEntry1()
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
 
 		adminWarpMenuCategory, found := findCategoryByTitle(warpMenuCategories, "Admin")
 		assert.True(t, found)
-		adminExpectedWarpMenuEntries := []WarpMenuEntry{
-			{
-				Title:       "",
-				DisplayName: "Dogu 2",
-				Href:        "/dogu_2",
-				Target:      "self",
-				Localization: map[string]string{
-					"de": "Dogu 2",
-					"en": "Dogu 2 en",
-				},
-			},
-		}
+		adminExpectedWarpMenuEntries := getExpectedWarpMenuEntry2()
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
 	})
 
+}
+
+func getExpectedWarpMenuEntry2() []WarpMenuEntry {
+	return []WarpMenuEntry{
+		{
+			Title:       "",
+			DisplayName: "Dogu 2",
+			Href:        "/dogu_2",
+			Target:      "self",
+			Localization: map[string]string{
+				"de": "Dogu 2",
+				"en": "Dogu 2 en",
+			},
+		},
+	}
+}
+
+func getExpectedWarpMenuEntry1() []WarpMenuEntry {
+	return []WarpMenuEntry{
+		{
+			Title:       "",
+			DisplayName: "Dogu 1",
+			Href:        "/dogu_1",
+			Target:      "self",
+			Localization: map[string]string{
+				"de": "Dogu 1",
+				"en": "Dogu 1 en",
+			},
+		},
+	}
+}
+
+func getClientMock(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWatch {
+	clientMock := newClientBuilder(t).
+		WithRuntimeObjects(
+			&appsv1.Deployment{
+				ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
+			},
+			getConfigMap(t, config.Configuration{}),
+			&warpmenu.WarpMenuEntryList{
+				Items: entries,
+			},
+		).
+		WithStatusSubresource(&entries[0]).
+		Build()
+	return clientMock
 }
 
 func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request) {
