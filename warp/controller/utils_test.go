@@ -7,8 +7,9 @@ type WarpMenuCategory struct {
 }
 
 type WarpMenuEntry struct {
-	Title       string
-	DisplayName string
-	Href        string
-	Target      string
+	Title        string
+	DisplayName  string
+	Href         string
+	Target       string
+	Localization map[string]string
 }

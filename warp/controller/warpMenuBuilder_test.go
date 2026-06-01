@@ -36,7 +36,7 @@ func TestBuildWarpMenu(t *testing.T) {
 		}
 		checkCategories(t, categories, 1, "Category")
 		assert.Equal(t, 1, len(categories[0].Entries))
-		checkEntry(t, categories[0].Entries[0], "Jenkins DE", "/jenkins")
+		checkEntry(t, categories[0].Entries[0], "Jenkins DE", "Jenkins EN", "/jenkins")
 	})
 
 	t.Run("should build categories for a complex entry list", func(t *testing.T) {
@@ -54,10 +54,10 @@ func TestBuildWarpMenu(t *testing.T) {
 		}
 		checkCategories(t, categories, 2, "Category A", "Category B")
 		assert.Equal(t, 2, len(categories[0].Entries))
-		checkEntry(t, categories[0].Entries[0], "Jenkins A", "/alpha")
-		checkEntry(t, categories[0].Entries[1], "Jenkins A2", "/aleph")
+		checkEntry(t, categories[0].Entries[0], "Jenkins A", "Jenkins A EN", "/alpha")
+		checkEntry(t, categories[0].Entries[1], "Jenkins A2", "Jenkins A2 EN", "/aleph")
 		assert.Equal(t, 1, len(categories[1].Entries))
-		checkEntry(t, categories[1].Entries[0], "Jenkins B", "/beta")
+		checkEntry(t, categories[1].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
 	})
 
 	t.Run("should omit disabled entries", func(t *testing.T) {
@@ -75,16 +75,18 @@ func TestBuildWarpMenu(t *testing.T) {
 		}
 		checkCategories(t, categories, 2, "Category A", "Category B")
 		assert.Equal(t, 1, len(categories[0].Entries))
-		checkEntry(t, categories[0].Entries[0], "Jenkins A2", "/aleph")
+		checkEntry(t, categories[0].Entries[0], "Jenkins A2", "Jenkins A2 EN", "/aleph")
 		assert.Equal(t, 1, len(categories[1].Entries))
-		checkEntry(t, categories[1].Entries[0], "Jenkins B", "/beta")
+		checkEntry(t, categories[1].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
 	})
 }
 
-func checkEntry(t *testing.T, entry types.Entry, expectedDisplayName, expectedPath string) {
-	assert.Equal(t, expectedDisplayName, entry.DisplayName)
+func checkEntry(t *testing.T, entry types.Entry, expectedGermanDisplayName, expectedEnglishDisplayName, expectedPath string) {
+	assert.Equal(t, expectedGermanDisplayName, entry.DisplayName)
 	assert.Equal(t, expectedPath, entry.Href)
 	assert.Equal(t, types.TARGET_SELF, entry.Target)
+	assert.Equal(t, expectedGermanDisplayName, entry.Localization["de"])
+	assert.Equal(t, expectedEnglishDisplayName, entry.Localization["en"])
 }
 
 func checkCategories(t *testing.T, categories types.Categories, expectedLength int, expectedNames ...string) {

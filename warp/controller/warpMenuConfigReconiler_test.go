@@ -70,6 +70,10 @@ func TestWarpMenuReconcile(t *testing.T) {
 				DisplayName: "Dogu 1",
 				Href:        "/dogu_1",
 				Target:      "self",
+				Localization: map[string]string{
+					"de": "Dogu 1",
+					"en": "Dogu 1 en",
+				},
 			},
 		}
 		assert.ElementsMatch(t, devAppsExpectedWarpMenuEntries, devAppsWarpMenuCategory.Entries)
@@ -82,6 +86,10 @@ func TestWarpMenuReconcile(t *testing.T) {
 				DisplayName: "Dogu 2",
 				Href:        "/dogu_2",
 				Target:      "self",
+				Localization: map[string]string{
+					"de": "Dogu 2",
+					"en": "Dogu 2 en",
+				},
 			},
 		}
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)

@@ -29,7 +29,10 @@ func (b WarpMenuBuilder) buildEntryWithCategory(entry warpmenu.WarpMenuEntry) ty
 			DisplayName: entry.Spec.DisplayName.DE,
 			Href:        entry.Spec.Path,
 			Target:      types.TARGET_SELF,
-		},
+			Localization: map[string]string{
+				"de": entry.Spec.DisplayName.DE,
+				"en": entry.Spec.DisplayName.EN,
+			}},
 	}
 }
 
