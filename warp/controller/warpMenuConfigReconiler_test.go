@@ -8,6 +8,7 @@ import (
 
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
+	warpassetstypes "github.com/cloudogu/warp-assets/controller/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -147,6 +148,23 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	})
 
+	t.Run("Reconcile should fail if unable to list warp menu entries", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", true)
+		clientMock := getClientMockWithListError(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %v", mock.Anything)
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		assert.EqualError(t, err, "read warp menu entry CRs: Simulating api error")
+
+	})
+
 	t.Run("Reconcile should fail if deployment is not available", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		_ = updateCRStatus(&firstEntry)
@@ -155,7 +173,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
 
-		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Failed to get the deployment: %w", mock.Anything)
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Failed to get the deployment: %v", mock.Anything)
 		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName+"wrong")
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
@@ -171,7 +189,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
-		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %w", mock.Anything)
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %v", mock.Anything)
 
 		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
 
@@ -198,6 +216,23 @@ func TestSetupWithManager(t *testing.T) {
 
 		err = reconciler.SetupWithManager(mgr)
 		assert.NoError(t, err)
+	})
+}
+
+func TestWriteWarpMenuFile(t *testing.T) {
+
+	t.Run("should give error because of wrong warpmenupath", func(t *testing.T) {
+
+		scheme := runtime.NewScheme()
+		err := warpmenu.AddToScheme(scheme)
+		assert.NoError(t, err)
+		assert.NoError(t, err)
+
+		reconciler := NewWarpMenuReconciler(nil, nil, "nonexistingpath", testDeploymentName)
+		categories := &warpassetstypes.Categories{}
+		err = reconciler.writeWarpMenuFile(*categories)
+
+		assert.EqualError(t, err, "failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory")
 	})
 }
 
@@ -229,36 +264,6 @@ func getExpectedWarpMenuEntry1() []WarpMenuEntry {
 			},
 		},
 	}
-}
-
-func getClientMock(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWatch {
-	clientMock := newClientBuilder(t).
-		WithRuntimeObjects(
-			&appsv1.Deployment{
-				ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
-			},
-			getConfigMap(t, config.Configuration{}),
-			&warpmenu.WarpMenuEntryList{
-				Items: entries,
-			},
-		).
-		WithStatusSubresource(&entries[0]).
-		Build()
-	return clientMock
-}
-func getClientMockWithoutConfigMap(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWatch {
-	clientMock := newClientBuilder(t).
-		WithRuntimeObjects(
-			&appsv1.Deployment{
-				ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
-			},
-			&warpmenu.WarpMenuEntryList{
-				Items: entries,
-			},
-		).
-		WithStatusSubresource(&entries[0]).
-		Build()
-	return clientMock
 }
 
 func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request, disabled bool) {
