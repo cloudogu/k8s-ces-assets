@@ -17,9 +17,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/yaml"
 )
 
@@ -63,7 +65,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	})
 
-	t.Run("Status not create warp menu entries for the ones that are disabled", func(t *testing.T) {
+	t.Run("Should not create warp menu entries for the warp menu entries that are disabled", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", true)
 		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
 
@@ -145,6 +147,58 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	})
 
+	t.Run("Reconcile should fail if deployment is not available", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		_ = updateCRStatus(&firstEntry)
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Failed to get the deployment: %w", mock.Anything)
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName+"wrong")
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		assert.EqualError(t, err, "warp update: failed to get deployment [aDeploymentwrong]: deployments.apps \"aDeploymentwrong\" not found")
+
+	})
+
+	t.Run("Reconcile should fail if configuration is not available", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		_ = updateCRStatus(&firstEntry)
+		clientMock := getClientMockWithoutConfigMap(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %w", mock.Anything)
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		assert.EqualError(t, err, "read warp menu configuration: failed to get warp menu configmap: configmaps \"k8s-ces-warp-config\" not found")
+
+	})
+}
+
+func TestSetupWithManager(t *testing.T) {
+
+	t.Run("should setup the controller with manager", func(t *testing.T) {
+
+		scheme := runtime.NewScheme()
+		err := warpmenu.AddToScheme(scheme)
+		assert.NoError(t, err)
+		mgr, err := manager.New(&rest.Config{}, manager.Options{
+			Scheme: scheme,
+		})
+		assert.NoError(t, err)
+
+		reconciler := NewWarpMenuReconciler(nil, nil, "doesnotmatter", testDeploymentName)
+
+		err = reconciler.SetupWithManager(mgr)
+		assert.NoError(t, err)
+	})
 }
 
 func getExpectedWarpMenuEntry2() []WarpMenuEntry {
@@ -184,6 +238,20 @@ func getClientMock(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWa
 				ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
 			},
 			getConfigMap(t, config.Configuration{}),
+			&warpmenu.WarpMenuEntryList{
+				Items: entries,
+			},
+		).
+		WithStatusSubresource(&entries[0]).
+		Build()
+	return clientMock
+}
+func getClientMockWithoutConfigMap(t *testing.T, entries []warpmenu.WarpMenuEntry) client.WithWatch {
+	clientMock := newClientBuilder(t).
+		WithRuntimeObjects(
+			&appsv1.Deployment{
+				ObjectMeta: ctrl.ObjectMeta{Name: testDeploymentName, Namespace: testNamespace},
+			},
 			&warpmenu.WarpMenuEntryList{
 				Items: entries,
 			},
