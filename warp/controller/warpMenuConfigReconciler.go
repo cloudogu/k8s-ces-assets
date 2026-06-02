@@ -67,11 +67,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
 	}
 
-	categories, err := r.createCategories(&warpMenuConfiguration.Order, warpMenuEntries)
-	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Creating warp menu categories failed: %v", err)
-		return ctrl.Result{}, fmt.Errorf("create categories: %w", err)
-	}
+	categories := r.createCategories(&warpMenuConfiguration.Order, warpMenuEntries)
 
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
@@ -96,7 +92,7 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *WarpMenuConfigReconciler) createCategories(order *config.Order, menuEntries *warpmenu.WarpMenuEntryList) (types.Categories, error) {
+func (r *WarpMenuConfigReconciler) createCategories(order *config.Order, menuEntries *warpmenu.WarpMenuEntryList) types.Categories {
 	menuBuilder := WarpMenuBuilder{order: *order}
 	return menuBuilder.buildCategories(menuEntries)
 }

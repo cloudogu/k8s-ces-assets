@@ -12,14 +12,14 @@ type WarpMenuBuilder struct {
 	order config.Order
 }
 
-func (b WarpMenuBuilder) buildCategories(entries *warpmenu.WarpMenuEntryList) (types.Categories, error) {
+func (b WarpMenuBuilder) buildCategories(entries *warpmenu.WarpMenuEntryList) types.Categories {
 	var list []types.EntryWithCategory
 	for _, entry := range entries.Items {
 		if !entry.Spec.Disabled {
 			list = append(list, b.buildEntryWithCategory(entry))
 		}
 	}
-	return b.convertToCategories(list), nil
+	return b.convertToCategories(list)
 }
 
 func (b WarpMenuBuilder) buildEntryWithCategory(entry warpmenu.WarpMenuEntry) types.EntryWithCategory {

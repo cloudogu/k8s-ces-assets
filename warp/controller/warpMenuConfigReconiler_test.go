@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	warpassetstypes "github.com/cloudogu/warp-assets/controller/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -180,7 +179,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 	})
 
-	t.Run("Reconcile should fail if configuration is not available", func(t *testing.T) {
+	t.Run("Reconcile should fail if warp menu configmap is not available", func(t *testing.T) {
 		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
 		_ = updateCRStatus(&firstEntry)
 		clientMock := getClientMockWithoutConfigMap(t, []warpmenu.WarpMenuEntry{firstEntry})
@@ -194,6 +193,38 @@ func TestWarpMenuReconcile(t *testing.T) {
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
 		assert.EqualError(t, err, "read warp menu configuration: failed to get warp menu configmap: configmaps \"k8s-ces-warp-config\" not found")
+
+	})
+
+	t.Run("Reconcile should fail if writing to WarpMenuFile fails", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", true)
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %v", mock.Anything)
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, "nonexistingpath", testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		assert.EqualError(t, err, "write warp menu file: failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory")
+	})
+
+	t.Run("Reconcile should fail if updating the WarpMenuEntry Status fails", func(t *testing.T) {
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", true)
+		clientMock := getClientMockWithStatusUpdateError(t, []warpmenu.WarpMenuEntry{firstEntry})
+
+		warpMenuPath := t.TempDir()
+		eventRecorderMock := newMockEventRecorder(t)
+
+		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %v", mock.Anything, mock.Anything)
+
+		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName)
+
+		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
+		_, err := reconciler.Reconcile(context.Background(), request)
+		assert.EqualError(t, err, "update status of dogu1: mocked SubResourceClient error")
 
 	})
 }
@@ -214,23 +245,6 @@ func TestSetupWithManager(t *testing.T) {
 
 		err = reconciler.SetupWithManager(mgr)
 		assert.NoError(t, err)
-	})
-}
-
-func TestWriteWarpMenuFile(t *testing.T) {
-
-	t.Run("should give error because of wrong warpmenupath", func(t *testing.T) {
-
-		scheme := runtime.NewScheme()
-		err := warpmenu.AddToScheme(scheme)
-		assert.NoError(t, err)
-		assert.NoError(t, err)
-
-		reconciler := NewWarpMenuReconciler(nil, nil, "nonexistingpath", testDeploymentName)
-		categories := &warpassetstypes.Categories{}
-		err = reconciler.writeWarpMenuFile(*categories)
-
-		assert.EqualError(t, err, "failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory")
 	})
 }
 
