@@ -14,7 +14,6 @@ import (
 
 const (
 	WarpConfigMap = "k8s-ces-warp-config"
-	MenuConfigMap = "k8s-ces-menu-json"
 	StageLocal    = "local"
 	DevConfigPath = "k8s/dev-resources/k8s-ces-warp-config.yaml"
 	StageEnvVar   = "STAGE"
@@ -34,24 +33,7 @@ type Order map[string]int
 
 // Configuration for warp menu creation
 type Configuration struct {
-	Sources []Source
-	Target  string
-	Order   Order
-	Support []SupportSource
-}
-
-// Source in global config
-type Source struct {
-	Path string
-	Type string
-	Tag  string
-}
-
-// SupportSource for SupportEntries from yaml
-type SupportSource struct {
-	Identifier string
-	External   bool
-	Href       string
+	Order Order
 }
 
 // ReadConfiguration reads the service discovery configuration. Either from file in development mode with environment
