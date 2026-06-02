@@ -7,7 +7,10 @@ import (
 
 	"github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 	v2 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -63,4 +66,18 @@ func getClientMockWithListError(t *testing.T, entries []v1.WarpMenuEntry) client
 		WithStatusSubresource(&entries[0]).
 		Build()
 	return clientMock
+}
+
+func getConfigMap(t *testing.T, warpMenuConfig config.Configuration) *corev1.ConfigMap {
+	warpMenuConfigAsString, err := yaml.Marshal(warpMenuConfig)
+	require.NoError(t, err)
+
+	configMap := corev1.ConfigMap{}
+	data := map[string]string{
+		"warp": string(warpMenuConfigAsString),
+	}
+	configMap.Name = "k8s-ces-warp-config"
+	configMap.Namespace = testNamespace
+	configMap.Data = data
+	return &configMap
 }

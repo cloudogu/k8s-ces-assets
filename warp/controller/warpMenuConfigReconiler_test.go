@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	"github.com/cloudogu/warp-assets/config"
 	warpassetstypes "github.com/cloudogu/warp-assets/controller/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -23,7 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -307,20 +305,6 @@ func parseWarpMenuCategoriesFromJsonFile(t *testing.T, warpMenuPath string) []Wa
 	require.NoError(t, err)
 
 	return *warpMenuCategories
-}
-
-func getConfigMap(t *testing.T, warpMenuConfig config.Configuration) *corev1.ConfigMap {
-	warpMenuConfigAsString, err := yaml.Marshal(warpMenuConfig)
-	require.NoError(t, err)
-
-	configMap := corev1.ConfigMap{}
-	data := map[string]string{
-		"warp": string(warpMenuConfigAsString),
-	}
-	configMap.Name = "k8s-ces-warp-config"
-	configMap.Namespace = testNamespace
-	configMap.Data = data
-	return &configMap
 }
 
 func findCategoryByTitle(warpMenuCategories []WarpMenuCategory, title string) (WarpMenuCategory, bool) {
