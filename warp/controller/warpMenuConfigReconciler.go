@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -78,7 +79,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
-	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries, req)
+	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %v", req.Name, err)
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
@@ -123,17 +124,17 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories
 	return nil
 }
 
-func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entries *warpmenu.WarpMenuEntryList, req ctrl.Request) error {
+func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entries *warpmenu.WarpMenuEntryList) error {
+	var errs []error
 	for _, entry := range entries.Items {
-		if entry.Name == req.Name && entry.Namespace == req.Namespace {
-			condition := r.createStatusCondition(entry.Spec.Disabled, entry.Generation)
-			meta.SetStatusCondition(&entry.Status.Conditions, condition)
-			err := r.client.Status().Update(ctx, &entry)
-			return err
+		condition := r.createStatusCondition(entry.Spec.Disabled, entry.Generation)
+		meta.SetStatusCondition(&entry.Status.Conditions, condition)
+		if err := r.client.Status().Update(ctx, &entry); err != nil {
+			errs = append(errs, err)
 		}
 	}
-	log.FromContext(ctx).Info("Warp menu entry not found, the warp menu entry may be deleted.")
-	return nil
+
+	return errors.Join(errs...)
 }
 
 func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool, generation int64) v1.Condition {
