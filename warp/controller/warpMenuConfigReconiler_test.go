@@ -60,7 +60,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
 		verifyWarpMenuStatus(t, err, clientMock, request, false)
-
+		verifyNoChangeToStatusCondition(t, clientMock, &secondEntry)
 	})
 
 	t.Run("Should not create warp menu entries for the warp menu entries that are disabled", func(t *testing.T) {
@@ -298,6 +298,13 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		expectedCondition.Message = "Warp menu entry has been hidden, because it is disabled."
 	}
 	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
+}
+
+func verifyNoChangeToStatusCondition(t *testing.T, clientMock client.WithWatch, secondWarpMenuEntry *warpmenu.WarpMenuEntry) {
+	warpMenuEntry := &warpmenu.WarpMenuEntry{}
+	err := clientMock.Get(context.Background(), types.NamespacedName{Namespace: testNamespace, Name: secondWarpMenuEntry.Name}, warpMenuEntry)
+	assert.NoError(t, err)
+	assert.Empty(t, warpMenuEntry.Status.Conditions)
 }
 
 func newClientBuilder(t *testing.T) *fake.ClientBuilder {
