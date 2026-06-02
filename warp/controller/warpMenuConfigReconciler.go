@@ -126,7 +126,7 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories
 func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entries *warpmenu.WarpMenuEntryList, req ctrl.Request) error {
 	for _, entry := range entries.Items {
 		if entry.Name == req.Name && entry.Namespace == req.Namespace {
-			condition := r.createStatusCondition(entry.Spec.Disabled)
+			condition := r.createStatusCondition(entry.Spec.Disabled, entry.Generation)
 			meta.SetStatusCondition(&entry.Status.Conditions, condition)
 			err := r.client.Status().Update(ctx, &entry)
 			return err
@@ -136,7 +136,7 @@ func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context
 	return nil
 }
 
-func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool) v1.Condition {
+func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool, generation int64) v1.Condition {
 	var condition v1.Condition
 	if disabled {
 		condition = v1.Condition{
@@ -152,5 +152,6 @@ func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool) v1.Condi
 	condition.Type = warpmenu.ConditionReady
 	condition.Status = v1.ConditionTrue
 	condition.LastTransitionTime = v1.NewTime(time.Now())
+	condition.ObservedGeneration = generation
 	return condition
 }

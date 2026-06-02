@@ -277,6 +277,7 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
 		Reason:             warpmenu.ReasonEntryRendered,
 		Message:            "Warp menu entry has been rendered.",
+		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
 	if disabled {
 		expectedCondition.Reason = warpmenu.ReasonEntryHidden
