@@ -85,32 +85,30 @@ func readWarpConfigFromCluster(ctx context.Context, client client.Client, namesp
 	return conf, nil
 }
 
-func ReadWatchNamespace() (string, error) {
-	watchNamespace, found := os.LookupEnv(namespaceEnvVar)
+func getEnvlookup(env, errormessage, logMessage string) (string, error) {
+	envValue, found := os.LookupEnv(env)
 	if !found {
-		return "", fmt.Errorf("failed to read namespace to watch from environment variable [%s], please set the variable and try again", namespaceEnvVar)
+		return "", fmt.Errorf(errormessage, env)
 	}
-	logger.Info(fmt.Sprintf("found target namespace: [%s]", watchNamespace))
+	logger.Info(fmt.Sprintf(logMessage, env))
 
-	return watchNamespace, nil
+	return envValue, nil
+}
+
+func ReadWatchNamespace() (string, error) {
+	return getEnvlookup(namespaceEnvVar,
+		"failed to read namespace to watch from environment variable [%s], please set the variable and try again",
+		"found target namespace: [%s]")
 }
 
 func ReadWarpPath() (string, error) {
-	warpPath, found := os.LookupEnv(warpPathEnvVar)
-	if !found {
-		return "", fmt.Errorf("failed to read warp path to watch from environment variable [%s], please set the variable and try again", warpPathEnvVar)
-	}
-	logger.Info(fmt.Sprintf("found target warp path: [%s]", warpPath))
-
-	return warpPath, nil
+	return getEnvlookup(warpPathEnvVar,
+		"failed to read warp path to watch from environment variable [%s], please set the variable and try again",
+		"found target warp path: [%s]")
 }
 
 func ReadDeploymentName() (string, error) {
-	deploymentName, found := os.LookupEnv(deploymentNameEnvVar)
-	if !found {
-		return "", fmt.Errorf("failed to read deployment name from environment variable [%s], please set the variable and try again", deploymentNameEnvVar)
-	}
-	logger.Info(fmt.Sprintf("found target depolyment name: [%s]", deploymentName))
-
-	return deploymentName, nil
+	return getEnvlookup(deploymentNameEnvVar,
+		"failed to read deployment name from environment variable [%s], please set the variable and try again",
+		"found target depolyment name: [%s]")
 }

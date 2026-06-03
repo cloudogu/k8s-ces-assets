@@ -3,13 +3,14 @@ package config
 import (
 	"context"
 	_ "embed"
+	"os"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/yaml"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 //go:embed testdata/k8s_config.yaml
@@ -138,5 +139,43 @@ func Test_readWarpConfigFromFile(t *testing.T) {
 
 		// then
 		require.Error(t, err)
+	})
+}
+
+func Test_ReadWatchNamespace(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+
+		watchNamespace, found := os.LookupEnv(namespaceEnvVar)
+		testnamespace := "mytestnamespyce"
+		_ = os.Setenv(namespaceEnvVar, testnamespace)
+		// when
+		namespace, err := ReadWatchNamespace()
+
+		// then
+		require.NoError(t, err)
+		assert.NotNil(t, namespace)
+		assert.Equal(t, testnamespace, namespace)
+
+		if found {
+			_ = os.Setenv(namespaceEnvVar, watchNamespace)
+		}
+	})
+
+	t.Run("fail", func(t *testing.T) {
+
+		watchNamespace, found := os.LookupEnv(namespaceEnvVar)
+		testnamespace := "mytestnamespyce"
+		_ = os.Setenv(namespaceEnvVar, testnamespace)
+		_ = os.Unsetenv(namespaceEnvVar)
+		// when
+		_, err := ReadWatchNamespace()
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read namespace to watch from environment variable")
+
+		if found {
+			_ = os.Setenv(namespaceEnvVar, watchNamespace)
+		}
 	})
 }
