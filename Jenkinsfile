@@ -73,7 +73,7 @@ node('docker') {
                         }
 
         stage('SonarQube') {
-            //stageStaticAnalysisSonarQube()
+            stageStaticAnalysisSonarQube()
             echo "sonar here"
         }
 
