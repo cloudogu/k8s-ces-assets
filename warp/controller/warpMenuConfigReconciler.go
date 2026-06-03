@@ -133,21 +133,19 @@ func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context
 }
 
 func (r *WarpMenuConfigReconciler) createStatusCondition(disabled bool, generation int64) v1.Condition {
-	var condition v1.Condition
-	if disabled {
-		condition = v1.Condition{
-			Reason:  warpmenu.ReasonEntryHidden,
-			Message: "Warp menu entry has been hidden, because it is disabled.",
-		}
-	} else {
-		condition = v1.Condition{
-			Reason:  warpmenu.ReasonEntryRendered,
-			Message: "Warp menu entry has been rendered.",
-		}
+	condition := v1.Condition{
+		Type:               warpmenu.ConditionReady,
+		ObservedGeneration: generation,
+		LastTransitionTime: v1.NewTime(time.Now()),
 	}
-	condition.Type = warpmenu.ConditionReady
-	condition.Status = v1.ConditionTrue
-	condition.LastTransitionTime = v1.NewTime(time.Now())
-	condition.ObservedGeneration = generation
+	if disabled {
+		condition.Status = v1.ConditionFalse
+		condition.Reason = warpmenu.ReasonEntryHidden
+		condition.Message = "Warp menu entry has been hidden, because it is disabled."
+	} else {
+		condition.Status = v1.ConditionTrue
+		condition.Reason = warpmenu.ReasonEntryRendered
+		condition.Message = "Warp menu entry has been rendered."
+	}
 	return condition
 }
