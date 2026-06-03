@@ -16,14 +16,6 @@ rules:
       - get
       - watch
   - apiGroups:
-      - ""
-    resources:
-      - configmaps
-    resourceNames:
-      - "k8s-ces-menu-json"
-    verbs:
-      - update
-  - apiGroups:
       - apps
     resources:
       - deployments
@@ -61,4 +53,3 @@ rules:
       - get
       - update
       - patch
-    
