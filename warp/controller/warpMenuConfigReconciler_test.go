@@ -58,6 +58,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		adminExpectedWarpMenuEntries := getExpectedWarpMenuEntry2()
 		assert.ElementsMatch(t, adminExpectedWarpMenuEntries, adminWarpMenuCategory.Entries)
 
+		// only the status of the reconciled entry should be changed
 		verifyWarpMenuStatus(t, err, clientMock, request, false)
 		verifyNoChangeToStatusCondition(t, clientMock, &secondEntry)
 
@@ -156,7 +157,8 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
-		assert.EqualError(t, err, "read warp menu entry CRs: Simulating api error")
+		assert.EqualError(t, err, "Reading warp menu entry CRs failed: Simulating api error")
+		verifyFailedWarpMenuStatus(t, err, clientMock, request, "Reading warp menu entry CRs failed")
 		validateRecorderEvents(t, fakeRecorder, "Reading warp menu entry CRs failed: Simulating api error", errorOnWarpMenuUpdateEventReason)
 
 	})
@@ -174,7 +176,7 @@ func TestWarpMenuReconcile(t *testing.T) {
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
 		assert.EqualError(t, err, "warp update: failed to get deployment [aDeploymentwrong]: deployments.apps \"aDeploymentwrong\" not found")
-
+		verifyFailedWarpMenuStatus(t, err, clientMock, request, "warp update: failed to get deployment [aDeploymentwrong]")
 	})
 
 	t.Run("Reconcile should fail if warp menu configmap is not available", func(t *testing.T) {
@@ -184,13 +186,13 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		warpMenuPath := t.TempDir()
 		fakeRecorder := events.NewFakeRecorder(5)
-		//eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %v", mock.Anything)
 
 		reconciler := NewWarpMenuReconciler(clientMock, fakeRecorder, warpMenuPath, testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
-		assert.EqualError(t, err, "read warp menu configuration: failed to get warp menu configmap: configmaps \"k8s-ces-warp-config\" not found")
+		assert.EqualError(t, err, "Reading warp menu config failed: failed to get warp menu configmap: configmaps \"k8s-ces-warp-config\" not found")
+		verifyFailedWarpMenuStatus(t, err, clientMock, request, "Reading warp menu config failed")
 		validateRecorderEvents(t, fakeRecorder, "Reading warp menu config failed: failed to get warp menu configmap: configmaps \"k8s-ces-warp-config\" not found", errorOnWarpMenuUpdateEventReason)
 
 	})
@@ -201,13 +203,12 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 		fakeRecorder := events.NewFakeRecorder(5)
 
-		//eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %v", mock.Anything)
-
 		reconciler := NewWarpMenuReconciler(clientMock, fakeRecorder, "nonexistingpath", testDeploymentName)
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "aNamespace", Name: firstEntry.Name}}
 		_, err := reconciler.Reconcile(context.Background(), request)
-		assert.EqualError(t, err, "write warp menu file: failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory")
+		assert.EqualError(t, err, "Writing warp menu file failed: failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory")
+		verifyFailedWarpMenuStatus(t, err, clientMock, request, "Writing warp menu file failed")
 		validateRecorderEvents(t, fakeRecorder, "Writing warp menu file failed: failed to create file: nonexistingpath/menu.json open nonexistingpath/menu.json: no such file or directory", errorOnWarpMenuUpdateEventReason)
 	})
 
@@ -289,6 +290,24 @@ func getExpectedWarpMenuEntry1() []WarpMenuEntry {
 	}
 }
 
+func verifyFailedWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request, expectedErrorMessage string) {
+	updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
+	err = clientMock.Get(context.Background(), request.NamespacedName, updatedWarpMenuEntry)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, updatedWarpMenuEntry.Status.Conditions)
+	assert.Equal(t, 1, len(updatedWarpMenuEntry.Status.Conditions))
+
+	expectedCondition := metav1.Condition{
+		Type:               warpmenu.ConditionReady,
+		Status:             metav1.ConditionFalse,
+		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
+		Reason:             reasonMenuGenerationFailed,
+		Message:            expectedErrorMessage,
+		ObservedGeneration: updatedWarpMenuEntry.Generation,
+	}
+	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
+}
+
 func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request, disabled bool) {
 	updatedWarpMenuEntry := &warpmenu.WarpMenuEntry{}
 	err = clientMock.Get(context.Background(), request.NamespacedName, updatedWarpMenuEntry)
@@ -305,7 +324,6 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
 	if disabled {
-		expectedCondition.Status = metav1.ConditionFalse
 		expectedCondition.Reason = warpmenu.ReasonEntryHidden
 		expectedCondition.Message = "Warp menu entry has been hidden, because it is disabled."
 	}
