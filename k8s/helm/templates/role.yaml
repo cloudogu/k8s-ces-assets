@@ -39,6 +39,13 @@ rules:
       - create
       - patch
   - apiGroups:
+      - "events.k8s.io"
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
       - k8s.cloudogu.com
     resources:
       - warpmenuentries

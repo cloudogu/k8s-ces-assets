@@ -84,7 +84,7 @@ func setupWarpMenuReconciler(warpMenuManager k8sManager) error {
 	if err != nil {
 		return fmt.Errorf("read config value 'deployment name': %w", err)
 	}
-	eventRecorder := warpMenuManager.GetEventRecorderFor(deploymentName)
+	eventRecorder := warpMenuManager.GetEventRecorder(deploymentName)
 
 	warpMenuPath, err := config.ReadWarpPath()
 	if err != nil {
