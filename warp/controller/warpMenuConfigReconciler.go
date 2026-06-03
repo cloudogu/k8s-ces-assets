@@ -49,14 +49,12 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	deployment := &appsv1.Deployment{}
 	err := r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
 	if err != nil {
-		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", r.deploymentName, err)
 	}
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %v", err)
-		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("read warp menu configuration: %w", err)
 	}
 
@@ -64,7 +62,6 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(req.Namespace))
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %v", err)
-		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
 	}
 
@@ -73,14 +70,12 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %v", err)
-		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
 	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries, req)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %v", req.Name, err)
-		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
