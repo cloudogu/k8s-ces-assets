@@ -170,7 +170,6 @@ func TestWarpMenuReconcile(t *testing.T) {
 		warpMenuPath := t.TempDir()
 		eventRecorderMock := newMockEventRecorder(t)
 
-		eventRecorderMock.EXPECT().Eventf(mock.Anything, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Failed to get the deployment: %v", mock.Anything)
 		reconciler := NewWarpMenuReconciler(clientMock, eventRecorderMock, warpMenuPath, testDeploymentName+"wrong")
 
 		request := ctrl.Request{NamespacedName: types.NamespacedName{Namespace: testNamespace, Name: firstEntry.Name}}
@@ -294,6 +293,7 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
 	if disabled {
+		expectedCondition.Status = metav1.ConditionFalse
 		expectedCondition.Reason = warpmenu.ReasonEntryHidden
 		expectedCondition.Message = "Warp menu entry has been hidden, because it is disabled."
 	}

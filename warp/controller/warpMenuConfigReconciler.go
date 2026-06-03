@@ -44,18 +44,19 @@ func NewWarpMenuReconciler(client k8sClient, eventRecoder eventRecorder, warpMen
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("WarpMenuConfigReconciler reconcile()")
+	logger.Info("Starting  reconcile ..")
 
 	deployment := &appsv1.Deployment{}
 	err := r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
 	if err != nil {
-		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Failed to get the deployment: %v", err)
+		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("warp update: failed to get deployment [%s]: %w", r.deploymentName, err)
 	}
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu config failed: %v", err)
+		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("read warp menu configuration: %w", err)
 	}
 
@@ -63,6 +64,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(req.Namespace))
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Reading warp menu entry CRs failed: %v", err)
+		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("read warp menu entry CRs: %w", err)
 	}
 
@@ -71,16 +73,19 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Writing warp menu file failed: %v", err)
+		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("write warp menu file: %w", err)
 	}
 
 	err = r.updateWarpMenuEntryStatus(ctx, warpMenuEntries, req)
 	if err != nil {
 		r.eventRecorder.Eventf(deployment, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, "Updating warp menu entry status for %s failed: %v", req.Name, err)
+		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
 	r.eventRecorder.Event(deployment, corev1.EventTypeNormal, warpMenuUpdateEventReason, "Warp menu updated.")
+	logger.Info("reconcile was successful.")
 	return ctrl.Result{}, nil
 }
 
@@ -128,7 +133,6 @@ func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context
 			return err
 		}
 	}
-	log.FromContext(ctx).Info("Warp menu entry not found, the warp menu entry may be deleted.")
 	return nil
 }
 
