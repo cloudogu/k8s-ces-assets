@@ -56,6 +56,9 @@ node('docker') {
 
                             stage('Unit Tests') {
                                 make 'unit-test'
+                                make 'k8s-integration-test'
+                                sed -i 's|github.com/cloudogu/warp-assets|warp|g' target/unit-tests/coverage.out
+                                sed -i 's|github.com/cloudogu/maintenance-assets|maintenance|g' target/unit-tests/coverage.out
                             }
 
                             stage("Review dog analysis") {

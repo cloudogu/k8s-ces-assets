@@ -136,3 +136,8 @@ clean_charts:
 k8s-ces-assets-release: ## Interactively starts the release workflow for k8s-ces-assets
 	@echo "Starting git flow release..."
 	@build/make/release.sh k8s-ces-assets
+
+.PHONY: k8s-integration-test
+k8s-integration-test: $(K8S_INTEGRATION_TEST_DIR) ${ENVTEST} ## Run k8s integration tests.
+	@echo "Running K8s integration tests..."
+	@KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test -tags=k8s_integration ./warp ./maintenance -coverprofile ${K8S_INTEGRATION_TEST_DIR}/report-k8s-integration.out
