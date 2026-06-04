@@ -133,7 +133,10 @@ func (r *WarpMenuConfigReconciler) handleError(ctx context.Context, err error, e
 	}
 	if entry != nil {
 		condition := r.createErrorStatusCondition(entry.Generation, errorMessage)
-		_ = r.updateStatusCondition(ctx, entry, condition, deployment)
+		statusError := r.updateStatusCondition(ctx, entry, condition, deployment)
+		if statusError != nil {
+			log.FromContext(ctx).Error(statusError, "error occurred while updating the error status condition for the entry : %v", entry)
+		}
 	}
 	return fmt.Errorf(errorMessage+": %w", err)
 }

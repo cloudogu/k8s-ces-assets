@@ -17,8 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	doguv2 "github.com/cloudogu/k8s-dogu-lib/v2/api/v2"
 )
 
 var (
@@ -35,7 +33,6 @@ type k8sManager interface {
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(doguv2.AddToScheme(scheme))
 	utilruntime.Must(warpmenu.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
