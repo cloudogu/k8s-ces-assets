@@ -5,8 +5,7 @@ go 1.26.1
 require (
 	github.com/bombsimon/logrusr/v2 v2.0.1
 	github.com/cloudogu/cesapp-lib v0.18.1
-	github.com/cloudogu/k8s-dogu-lib/v2 v2.9.0
-	github.com/cloudogu/k8s-warp-menu-entry-lib v0.0.0-20260528073503-adb9c15b08ec
+	github.com/cloudogu/k8s-warp-menu-entry-lib v0.1.0
 	github.com/go-logr/logr v1.4.3
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.3
@@ -22,8 +21,6 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cloudogu/ces-commons-lib v0.2.0 // indirect
-	github.com/cloudogu/retry-lib v0.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
