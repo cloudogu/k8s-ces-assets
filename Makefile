@@ -125,7 +125,7 @@ $(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
 
 $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
 	@echo "run static analysis with export to checkstyle format"
-	@$(LINT) $(LINTFLAGS) --output.checkstyle.path stdout run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
+	@$(LINT) $(LINTFLAGS) --output.checkstyle.path $@ run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER)
 
 
 clean_charts:
