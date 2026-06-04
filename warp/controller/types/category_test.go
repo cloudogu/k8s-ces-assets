@@ -1,8 +1,9 @@
 package types
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCategories_Len(t *testing.T) {
@@ -98,12 +99,12 @@ func TestCategories_insertCategory(t *testing.T) {
 
 	t.Run("add entries on same title", func(t *testing.T) {
 		// given
-		aEntry := Entry{Title: "a"}
+		aEntry := Entry{DisplayName: "a"}
 		aEntries := Entries{aEntry}
 		a := &Category{Order: 1, Title: "a", Entries: aEntries}
 		b := &Category{Order: 100, Title: "b"}
 		categories := Categories{a, b}
-		addEntry := Entry{Title: "add"}
+		addEntry := Entry{DisplayName: "add"}
 		addEntries := Entries{addEntry}
 		add := &Category{Order: 50, Title: "a", Entries: addEntries}
 

@@ -6,7 +6,6 @@ import "github.com/pkg/errors"
 type Entry struct {
 	DisplayName  string
 	Href         string
-	Title        string `json:",omitempty"`
 	Target       Target
 	Localization map[string]string
 }
