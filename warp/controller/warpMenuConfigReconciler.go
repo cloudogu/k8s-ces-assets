@@ -10,8 +10,10 @@ import (
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	"github.com/cloudogu/warp-assets/controller/types"
+	"github.com/go-logr/logr"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
@@ -47,13 +49,11 @@ func NewWarpMenuReconciler(client client.Client, eventRecoder events.EventRecord
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("Starting  reconcile ..")
+	logger.Info(fmt.Sprintf("Starting reconcile for %s in namespace %s ..", req.Name, req.Namespace))
 
-	entry := &warpmenu.WarpMenuEntry{}
-	err := r.client.Get(ctx, req.NamespacedName, entry)
+	entry, err := r.loadEntryToReconcile(ctx, req, logger)
 	if err != nil {
-		logger.Info("Entry CR to be reconciled not found - probably deleted?", "name", req.Name)
-		entry = nil
+		return ctrl.Result{}, r.handleError(ctx, err, nil, nil, "warp update: failed to get entry [%s] to be reconciled", req.Name)
 	}
 
 	deployment := &appsv1.Deployment{}
@@ -73,14 +73,14 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, r.handleError(ctx, err, entry, deployment, "Reading warp menu entry CRs failed")
 	}
 
-	categories := r.createCategories(&warpMenuConfiguration.Order, warpMenuEntries)
+	categories := r.createCategories(warpMenuConfiguration, warpMenuEntries)
 
 	err = r.writeWarpMenuFile(categories)
 	if err != nil {
 		return ctrl.Result{}, r.handleError(ctx, err, entry, deployment, "Writing warp menu file failed")
 	}
 
-	err = r.updateWarpMenuEntryStatus(ctx, req, deployment)
+	err = r.updateWarpMenuEntryStatus(ctx, entry, deployment)
 	if err != nil {
 		logger.Error(err, "error while reconciling")
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
@@ -91,6 +91,19 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return ctrl.Result{}, nil
 }
 
+func (r *WarpMenuConfigReconciler) loadEntryToReconcile(ctx context.Context, req ctrl.Request, logger logr.Logger) (*warpmenu.WarpMenuEntry, error) {
+	entry := &warpmenu.WarpMenuEntry{}
+	err := r.client.Get(ctx, req.NamespacedName, entry)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("Entry CR to be reconciled not found - probably deleted?", "name", req.Name)
+			return nil, nil
+		}
+		return nil, err
+	}
+	return entry, nil
+}
+
 func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&warpmenu.WarpMenuEntry{}).
@@ -98,9 +111,8 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *WarpMenuConfigReconciler) createCategories(order *config.Order, menuEntries *warpmenu.WarpMenuEntryList) types.Categories {
-	menuBuilder := WarpMenuBuilder{order: *order}
-	return menuBuilder.buildCategories(menuEntries)
+func (r *WarpMenuConfigReconciler) createCategories(configuration *config.Configuration, menuEntries *warpmenu.WarpMenuEntryList) types.Categories {
+	return WarpMenuBuilder{order: configuration.Order}.buildCategories(menuEntries)
 }
 
 func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories) error {
@@ -141,14 +153,11 @@ func (r *WarpMenuConfigReconciler) handleError(ctx context.Context, err error, e
 	return fmt.Errorf(errorMessage+": %w", err)
 }
 
-func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, req ctrl.Request, deployment *appsv1.Deployment) error {
-	entry := &warpmenu.WarpMenuEntry{}
-	err := r.client.Get(ctx, req.NamespacedName, entry)
-	if err == nil {
+func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entry *warpmenu.WarpMenuEntry, deployment *appsv1.Deployment) error {
+	if entry != nil {
 		condition := r.createSuccessfulStatusCondition(entry.Spec.Disabled, entry.Generation)
 		return r.updateStatusCondition(ctx, entry, condition, deployment)
 	}
-	log.FromContext(ctx).Info("Warp menu entry not found, the CR may have been deleted.")
 	return nil
 }
 
