@@ -15,7 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	types2 "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -86,7 +86,7 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
-	r.eventRecorder.Eventf(deployment, nil, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
+	r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
 	logger.Info("Reconcile was successful")
 	return ctrl.Result{}, nil
 }
@@ -141,7 +141,7 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories
 func (r *WarpMenuConfigReconciler) handleError(ctx context.Context, err error, entry *warpmenu.WarpMenuEntry, deployment *appsv1.Deployment, message string, a ...any) error {
 	errorMessage := fmt.Sprintf(message, a...)
 	if deployment != nil {
-		r.eventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, errorMessage+": %v", err)
+		r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, errorMessage+": %v", err)
 	}
 	if entry != nil {
 		condition := r.createErrorStatusCondition(entry.Generation, errorMessage)
@@ -170,9 +170,9 @@ func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, en
 	}
 	err := r.client.Status().Update(ctx, entry)
 	if err != nil {
-		log.FromContext(ctx).Info("Updating warp menu entry status failed", "name", entry.Name, "error", err)
+		log.FromContext(ctx).Error(err, "Updating warp menu entry status failed", "name", entry.Name)
 		if deployment != nil {
-			r.eventRecorder.Eventf(deployment, nil, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, "Updating warp menu entry status for %s failed: %v", entry.Name, err)
+			r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, "Updating warp menu entry status for %s failed: %v", entry.Name, err)
 		}
 	}
 	return err
