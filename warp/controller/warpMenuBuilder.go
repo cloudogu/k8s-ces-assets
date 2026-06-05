@@ -13,52 +13,41 @@ type WarpMenuBuilder struct {
 }
 
 func (b WarpMenuBuilder) buildCategories(entries *warpmenu.WarpMenuEntryList) types.Categories {
-	var list []types.EntryWithCategory
+	categoryMap := map[string]*types.Category{}
+
 	for _, entry := range entries.Items {
-		if !entry.Spec.Disabled {
-			list = append(list, b.buildEntryWithCategory(entry))
+		if entry.Spec.Disabled {
+			continue
 		}
-	}
-	return b.convertToCategories(list)
-}
-
-func (b WarpMenuBuilder) buildEntryWithCategory(entry warpmenu.WarpMenuEntry) types.EntryWithCategory {
-	return types.EntryWithCategory{
-		Category: entry.Spec.Category,
-		Entry: types.Entry{
-			DisplayName: entry.Spec.DisplayName.DE,
-			Href:        entry.Spec.Path,
-			Target:      types.TARGET_SELF,
-			Localization: map[string]string{
-				"de": entry.Spec.DisplayName.DE,
-				"en": entry.Spec.DisplayName.EN,
-			}},
-	}
-}
-
-func (b WarpMenuBuilder) convertToCategories(entries []types.EntryWithCategory) types.Categories {
-	categories := map[string]*types.Category{}
-
-	for _, entry := range entries {
-		categoryName := entry.Category
-		category := categories[categoryName]
-		if category == nil {
-			category = &types.Category{
+		categoryName := entry.Spec.Category
+		cat, exists := categoryMap[categoryName]
+		if !exists {
+			cat = &types.Category{
 				Title:   categoryName,
 				Entries: types.Entries{},
 				Order:   b.order[categoryName],
 			}
-			categories[categoryName] = category
+			categoryMap[categoryName] = cat
 		}
-		category.Entries = append(category.Entries, entry.Entry)
+		cat.Entries = append(cat.Entries, b.buildEntry(entry))
 	}
-
-	result := types.Categories{}
-	for _, cat := range categories {
+	result := make(types.Categories, 0, len(categoryMap))
+	for _, cat := range categoryMap {
 		sort.Sort(cat.Entries)
 		result = append(result, cat)
 	}
 	sort.Sort(result)
 	return result
+}
 
+func (b WarpMenuBuilder) buildEntry(entry warpmenu.WarpMenuEntry) types.Entry {
+	return types.Entry{
+		DisplayName: entry.Spec.DisplayName.DE,
+		Href:        entry.Spec.Path,
+		Target:      types.TARGET_SELF,
+		Localization: map[string]string{
+			"de": entry.Spec.DisplayName.DE,
+			"en": entry.Spec.DisplayName.EN,
+		},
+	}
 }
