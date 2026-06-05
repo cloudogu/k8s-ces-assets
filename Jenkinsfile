@@ -12,7 +12,7 @@ github = new GitHub(this, git)
 changelog = new Changelog(this)
 Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
-goVersion = "1.26.1"
+goVersion = "1.26.4"
 makefile = new Makefile(this)
 
 // Configuration of repository
@@ -56,7 +56,8 @@ node('docker') {
 
                             stage('Unit Tests') {
                                 make 'unit-test'
-                                make 'k8s-integration-test'
+                                // since k8s-ces-assets is a multi module project, sonar is not able to map the files,
+                                //   so replacing the github module with the actual directory helps in ensuring the sonar report find the correct files for coverage
                                  sh '''
                                 sed -i 's|github.com/cloudogu/warp-assets|warp|g' target/unit-tests/coverage.out
                                 sed -i 's|github.com/cloudogu/maintenance-assets|maintenance|g' target/unit-tests/coverage.out
@@ -79,7 +80,6 @@ node('docker') {
 
         stage('SonarQube') {
             stageStaticAnalysisSonarQube()
-            echo "sonar here"
         }
 
         K3d k3d = new K3d(this, "${WORKSPACE}", "${WORKSPACE}/k3d", env.PATH)

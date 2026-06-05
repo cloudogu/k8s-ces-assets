@@ -145,28 +145,28 @@ func Test_readWarpConfigFromFile(t *testing.T) {
 func Test_ReadWatchNamespace(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 
-		watchNamespace, found := os.LookupEnv(namespaceEnvVar)
-		testnamespace := "mytestnamespyce"
-		_ = os.Setenv(namespaceEnvVar, testnamespace)
+		// given
+		watchNamespace, _ := os.LookupEnv(namespaceEnvVar)
+		defer os.Setenv(namespaceEnvVar, watchNamespace)
+		testNamespace := "mytestnamespace"
+		require.NoError(t, os.Setenv(namespaceEnvVar, testNamespace))
+
 		// when
 		namespace, err := ReadWatchNamespace()
 
 		// then
 		require.NoError(t, err)
 		assert.NotNil(t, namespace)
-		assert.Equal(t, testnamespace, namespace)
-
-		if found {
-			_ = os.Setenv(namespaceEnvVar, watchNamespace)
-		}
+		assert.Equal(t, testNamespace, namespace)
 	})
 
 	t.Run("fail", func(t *testing.T) {
 
-		watchNamespace, found := os.LookupEnv(namespaceEnvVar)
-		testnamespace := "mytestnamespyce"
-		_ = os.Setenv(namespaceEnvVar, testnamespace)
-		_ = os.Unsetenv(namespaceEnvVar)
+		// given
+		watchNamespace, _ := os.LookupEnv(namespaceEnvVar)
+		defer os.Setenv(namespaceEnvVar, watchNamespace)
+		require.NoError(t, os.Unsetenv(namespaceEnvVar))
+
 		// when
 		_, err := ReadWatchNamespace()
 
@@ -174,8 +174,5 @@ func Test_ReadWatchNamespace(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to read namespace to watch from environment variable")
 
-		if found {
-			_ = os.Setenv(namespaceEnvVar, watchNamespace)
-		}
 	})
 }
