@@ -186,7 +186,7 @@ func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, en
 	}
 	err := r.client.Status().Update(ctx, entry)
 	if err != nil {
-		log.FromContext(ctx).Error(err, "Updating warp menu entry status failed", "name", entry.Name)
+		log.FromContext(ctx).Error(err, "updating warp menu entry status failed", "name", entry.Name)
 		if deployment != nil {
 			r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, "Updating warp menu entry status for %s failed: %v", entry.Name, err)
 		}
