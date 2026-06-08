@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
+	"github.com/cloudogu/warp-assets/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -21,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -257,6 +259,96 @@ func TestSetupWithManager(t *testing.T) {
 
 		err = reconciler.SetupWithManager(mgr)
 		assert.NoError(t, err)
+	})
+}
+
+func TestMapConfigMapToWarpMenuEntries(t *testing.T) {
+
+	t.Run("should call reconcile when WarpConfigMap is modified", func(t *testing.T) {
+
+		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
+		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
+		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
+
+		scheme := runtime.NewScheme()
+		err := warpmenu.AddToScheme(scheme)
+		assert.NoError(t, err)
+
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
+
+		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
+
+		configmap := &corev1.ConfigMap{}
+		configmap.Name = config.WarpConfigMap
+		configmap.Namespace = testNamespace
+
+		reconcile1 := reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      firstEntry.Name,
+				Namespace: firstEntry.Namespace,
+			},
+		}
+		reconcile2 := reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      secondEntry.Name,
+				Namespace: secondEntry.Namespace,
+			},
+		}
+
+		expectedReconcileRequest := []reconcile.Request{reconcile1, reconcile2}
+		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
+
+		assert.Equal(t, expectedReconcileRequest, reconcileRequest)
+	})
+
+	t.Run("should finish successfully when WarpConfigMap is modified and there are no warp menu entries", func(t *testing.T) {
+
+		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
+		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
+		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
+
+		scheme := runtime.NewScheme()
+		err := warpmenu.AddToScheme(scheme)
+		assert.NoError(t, err)
+
+		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry([]warpmenu.WarpMenuEntry(nil)))
+
+		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
+
+		configmap := &corev1.ConfigMap{}
+		configmap.Name = config.WarpConfigMap
+		configmap.Namespace = testNamespace
+
+		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
+
+		assert.Equal(t, []reconcile.Request([]reconcile.Request(nil)), reconcileRequest)
+	})
+
+	t.Run("should return null if there is an error getting the warp menu entry list when WarpConfigMap is modified ", func(t *testing.T) {
+
+		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
+		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
+		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
+
+		scheme := runtime.NewScheme()
+		err := warpmenu.AddToScheme(scheme)
+		assert.NoError(t, err)
+
+		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
+		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
+		clientMock := getClientMockWithListError(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
+
+		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
+
+		configmap := &corev1.ConfigMap{}
+		configmap.Name = config.WarpConfigMap
+		configmap.Namespace = testNamespace
+
+		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
+
+		assert.Equal(t, []reconcile.Request([]reconcile.Request(nil)), reconcileRequest)
 	})
 }
 

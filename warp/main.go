@@ -9,11 +9,14 @@ import (
 	"github.com/cloudogu/warp-assets/config"
 	warpCtrl "github.com/cloudogu/warp-assets/controller"
 	"github.com/cloudogu/warp-assets/logging"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -75,7 +78,7 @@ func start() error {
 }
 
 func setupWarpMenuReconciler(warpMenuManager k8sManager) error {
-	client := warpMenuManager.GetClient()
+	warpMenuClient := warpMenuManager.GetClient()
 
 	deploymentName, err := config.ReadDeploymentName()
 	if err != nil {
@@ -88,7 +91,7 @@ func setupWarpMenuReconciler(warpMenuManager k8sManager) error {
 		return fmt.Errorf("read config value 'warp path': %w", err)
 	}
 
-	reconciler := warpCtrl.NewWarpMenuReconciler(client, eventRecorder, warpMenuPath, deploymentName)
+	reconciler := warpCtrl.NewWarpMenuReconciler(warpMenuClient, eventRecorder, warpMenuPath, deploymentName)
 	err = reconciler.SetupWithManager(warpMenuManager)
 	if err != nil {
 		return fmt.Errorf("setup reconciler with manager: %w", err)
@@ -118,9 +121,18 @@ func getK8sManagerOptions(watchNamespace string) manager.Options {
 	return ctrl.Options{
 		Scheme:  scheme,
 		Metrics: server.Options{BindAddress: metricsAddr},
-		Cache: cache.Options{DefaultNamespaces: map[string]cache.Config{
-			watchNamespace: {},
-		}},
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.ConfigMap{}: {
+					Field: fields.SelectorFromSet(fields.Set{"metadata.name": config.WarpConfigMap}),
+					Namespaces: map[string]cache.Config{
+						watchNamespace: {},
+					},
+				},
+			},
+			DefaultNamespaces: map[string]cache.Config{
+				watchNamespace: {},
+			}},
 		WebhookServer:          webhook.NewServer(webhook.Options{Port: 9443}),
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,

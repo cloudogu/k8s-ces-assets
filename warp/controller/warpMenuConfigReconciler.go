@@ -19,9 +19,12 @@ import (
 	types2 "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const (
@@ -51,7 +54,7 @@ func NewWarpMenuReconciler(client client.Client, eventRecoder events.EventRecord
 
 func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("Starting reconcile for %s in namespace %s ..", req.Name, req.Namespace))
+	logger.Info(fmt.Sprintf("Starting WarpMenuConfigReconciler reconcile for %s in namespace %s ..", req.Name, req.Namespace))
 
 	entry, err := r.loadEntryToReconcile(ctx, req, logger)
 	if err != nil {
@@ -88,8 +91,14 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
 	}
 
-	r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
-	logger.Info("Reconcile was successful")
+	if entry == nil {
+		r.eventRecorder.Eventf(deployment, nil, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
+
+	} else {
+		r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
+
+	}
+	logger.Info("WarpMenuConfigReconciler Reconcile was successful")
 	return ctrl.Result{}, nil
 }
 
@@ -108,8 +117,12 @@ func (r *WarpMenuConfigReconciler) loadEntryToReconcile(ctx context.Context, req
 
 func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&warpmenu.WarpMenuEntry{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&warpmenu.WarpMenuEntry{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToWarpMenuEntries),
+			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+		).
 		Complete(r)
 }
 
@@ -219,4 +232,49 @@ func (r *WarpMenuConfigReconciler) createErrorStatusCondition(generation int64, 
 		Message:            errorMessage,
 	}
 	return condition
+}
+
+func (r *WarpMenuConfigReconciler) mapConfigMapToWarpMenuEntries(ctx context.Context, obj client.Object) []reconcile.Request {
+	logger := log.FromContext(ctx)
+	logger.Info(fmt.Sprintf("warp menu configmap change detected:  configmap: [%s , %s]  %v", obj.GetNamespace(), obj.GetName(), ctx))
+
+	//Get the watch namespace
+	watchNamespace, err := config.ReadWatchNamespace()
+	if err != nil {
+		logger.Error(err, "error occured while getting the watchNamespace")
+		return nil
+	}
+	//Ensure that the namespace and name is correct
+	if obj.GetName() != config.WarpConfigMap && obj.GetNamespace() != watchNamespace {
+		logger.Info("the name and namespace of the configmap does not match the configuration!")
+		return nil
+	}
+
+	// Get all warp menu entries and reconcile
+	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
+	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(obj.GetNamespace()))
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Info("no warp menu entries found. No need to call reconcile because of warp menu configmap change.")
+			return nil
+		} else {
+			logger.Error(err, "error occurred when getting the warp menu entries to reconcile because of warp menu configmap change.")
+			return nil
+		}
+	}
+
+	logger.Info(fmt.Sprintf("creating reconcile requests for warp menu entries because of warp menu configmap change... Number of warpmenu entries: %d ", len(warpMenuEntries.Items)))
+	// create the reconcile requests in the namespace
+	var requests []reconcile.Request
+	for _, warpMenuEntry := range warpMenuEntries.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types2.NamespacedName{
+				Name:      warpMenuEntry.Name,
+				Namespace: warpMenuEntry.Namespace,
+			},
+		})
+	}
+
+	return requests
+
 }

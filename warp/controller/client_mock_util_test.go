@@ -27,9 +27,16 @@ func getClientMock(t *testing.T, entries []v1.WarpMenuEntry) client.WithWatch {
 				Items: entries,
 			},
 		).
-		WithStatusSubresource(&entries[0]).
+		WithStatusSubresource(getFirstWarpMenuEntry(entries)).
 		Build()
 	return clientMock
+}
+
+func getFirstWarpMenuEntry(entries []v1.WarpMenuEntry) *v1.WarpMenuEntry {
+	if entries != nil && len(entries) > 0 {
+		return &entries[0]
+	}
+	return &v1.WarpMenuEntry{}
 }
 func getClientMockWithoutConfigMap(t *testing.T, entries []v1.WarpMenuEntry) client.WithWatch {
 	clientMock := newClientBuilder(t).
@@ -41,7 +48,7 @@ func getClientMockWithoutConfigMap(t *testing.T, entries []v1.WarpMenuEntry) cli
 				Items: entries,
 			},
 		).
-		WithStatusSubresource(&entries[0]).
+		WithStatusSubresource(getFirstWarpMenuEntry(entries)).
 		Build()
 	return clientMock
 }
@@ -63,7 +70,7 @@ func getClientMockWithListError(t *testing.T, entries []v1.WarpMenuEntry) client
 				return fmt.Errorf("Simulating api error")
 			},
 		}).
-		WithStatusSubresource(&entries[0]).
+		WithStatusSubresource(getFirstWarpMenuEntry(entries)).
 		Build()
 	return clientMock
 }
@@ -79,7 +86,7 @@ func getClientMockWithStatusUpdateError(t *testing.T, entries []v1.WarpMenuEntry
 				Items: entries,
 			},
 		).
-		WithStatusSubresource(&entries[0]).
+		WithStatusSubresource(getFirstWarpMenuEntry(entries)).
 		WithInterceptorFuncs(interceptor.Funcs{
 			// This single hook intercepts all actions on client.SubResourceClient
 			SubResource: func(cl client.WithWatch, subResource string) client.SubResourceClient {
