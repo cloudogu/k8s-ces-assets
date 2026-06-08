@@ -29,6 +29,8 @@ const (
 	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
 	warpMenuUpdateEventAction        = "WarpMenuEntryReconcile"
 	reasonMenuGenerationFailed       = "MenuGenerationFailed"
+	reasonMenuGenerated              = "MenuGenerated"
+	conditionVisible                 = "Visible"
 )
 
 type WarpMenuConfigReconciler struct {
@@ -155,18 +157,19 @@ func (r *WarpMenuConfigReconciler) handleError(ctx context.Context, err error, e
 
 func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entry *warpmenu.WarpMenuEntry, deployment *appsv1.Deployment) error {
 	if entry != nil {
-		condition := r.createSuccessfulStatusCondition(entry.Spec.Disabled, entry.Generation)
-		return r.updateStatusCondition(ctx, entry, condition, deployment)
+		err := r.updateStatusCondition(ctx, entry, r.createVisibleStatusCondition(entry.Spec.Disabled, entry.Generation), deployment)
+		if err != nil {
+			return err
+		}
+		return r.updateStatusCondition(ctx, entry, r.createSuccessfulStatusCondition(entry.Generation), deployment)
 	}
 	return nil
 }
 
 func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, entry *warpmenu.WarpMenuEntry, condition v1.Condition, deployment *appsv1.Deployment) error {
-	if meta.SetStatusCondition(&entry.Status.Conditions, condition) {
-		newCondition := meta.FindStatusCondition(entry.Status.Conditions, condition.Type)
-		if newCondition != nil {
-			newCondition.LastTransitionTime = v1.NewTime(time.Now())
-		}
+	if !meta.SetStatusCondition(&entry.Status.Conditions, condition) {
+		// nothing changed, so there is nothing to update
+		return nil
 	}
 	err := r.client.Status().Update(ctx, entry)
 	if err != nil {
@@ -178,16 +181,28 @@ func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, en
 	return err
 }
 
-func (r *WarpMenuConfigReconciler) createSuccessfulStatusCondition(disabled bool, generation int64) v1.Condition {
-	condition := v1.Condition{
+func (r *WarpMenuConfigReconciler) createSuccessfulStatusCondition(generation int64) v1.Condition {
+	return v1.Condition{
 		Type:               warpmenu.ConditionReady,
+		Status:             v1.ConditionTrue,
+		ObservedGeneration: generation,
+		Reason:             reasonMenuGenerated,
+		Message:            "Warp menu entry has successfully been synced",
+	}
+}
+
+func (r *WarpMenuConfigReconciler) createVisibleStatusCondition(disabled bool, generation int64) v1.Condition {
+	condition := v1.Condition{
+		Type:               conditionVisible,
 		Status:             v1.ConditionTrue,
 		ObservedGeneration: generation,
 	}
 	if disabled {
+		condition.Status = v1.ConditionFalse
 		condition.Reason = warpmenu.ReasonEntryHidden
 		condition.Message = "Warp menu entry has been hidden, because it is disabled."
 	} else {
+		condition.Status = v1.ConditionTrue
 		condition.Reason = warpmenu.ReasonEntryRendered
 		condition.Message = "Warp menu entry has been rendered."
 	}

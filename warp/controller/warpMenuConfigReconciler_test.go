@@ -297,15 +297,17 @@ func verifyFailedWarpMenuStatus(t *testing.T, err error, clientMock client.WithW
 	assert.NotEmpty(t, updatedWarpMenuEntry.Status.Conditions)
 	assert.Equal(t, 1, len(updatedWarpMenuEntry.Status.Conditions))
 
-	expectedCondition := metav1.Condition{
+	readyCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, warpmenu.ConditionReady)
+
+	expectedCondition := &metav1.Condition{
 		Type:               warpmenu.ConditionReady,
 		Status:             metav1.ConditionFalse,
-		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
+		LastTransitionTime: readyCondition.LastTransitionTime,
 		Reason:             reasonMenuGenerationFailed,
 		Message:            expectedErrorMessage,
 		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
-	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
+	assert.Equal(t, expectedCondition, readyCondition)
 }
 
 func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, request ctrl.Request, disabled bool) {
@@ -313,21 +315,34 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 	err = clientMock.Get(context.Background(), request.NamespacedName, updatedWarpMenuEntry)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, updatedWarpMenuEntry.Status.Conditions)
-	assert.Equal(t, 1, len(updatedWarpMenuEntry.Status.Conditions))
+	assert.Equal(t, 2, len(updatedWarpMenuEntry.Status.Conditions))
 
-	expectedCondition := metav1.Condition{
+	actualReadyCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, warpmenu.ConditionReady)
+	actualVisibleCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, conditionVisible)
+
+	expectedReadyCondition := &metav1.Condition{
 		Type:               warpmenu.ConditionReady,
 		Status:             metav1.ConditionTrue,
-		LastTransitionTime: updatedWarpMenuEntry.Status.Conditions[0].LastTransitionTime,
+		LastTransitionTime: actualReadyCondition.LastTransitionTime,
+		Reason:             reasonMenuGenerated,
+		Message:            "Warp menu entry has successfully been synced",
+		ObservedGeneration: updatedWarpMenuEntry.Generation,
+	}
+	expectedVisibleCondition := &metav1.Condition{
+		Type:               conditionVisible,
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: actualVisibleCondition.LastTransitionTime,
 		Reason:             warpmenu.ReasonEntryRendered,
 		Message:            "Warp menu entry has been rendered.",
 		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
 	if disabled {
-		expectedCondition.Reason = warpmenu.ReasonEntryHidden
-		expectedCondition.Message = "Warp menu entry has been hidden, because it is disabled."
+		expectedVisibleCondition.Status = metav1.ConditionFalse
+		expectedVisibleCondition.Reason = warpmenu.ReasonEntryHidden
+		expectedVisibleCondition.Message = "Warp menu entry has been hidden, because it is disabled."
 	}
-	assert.Equal(t, expectedCondition, updatedWarpMenuEntry.Status.Conditions[0])
+	assert.Equal(t, expectedReadyCondition, actualReadyCondition)
+	assert.Equal(t, expectedVisibleCondition, actualVisibleCondition)
 }
 
 func verifyNoChangeToStatusCondition(t *testing.T, clientMock client.WithWatch, secondWarpMenuEntry *warpmenu.WarpMenuEntry) {
