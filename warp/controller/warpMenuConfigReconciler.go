@@ -28,12 +28,11 @@ import (
 )
 
 const (
-	warpMenuUpdateEventReason               = "WarpMenu"
-	errorOnWarpMenuUpdateEventReason        = "ErrUpdateWarpMenu"
-	warpMenuUpdateEventAction               = "WarpMenuEntryReconcile"
-	reasonMenuGenerationFailed              = "MenuGenerationFailed"
-	reasonMenuGenerated                     = "MenuGenerated"
-	dummyWarpMenuConfigMapChangeRequestName = "dummyWarpMenuConfigMapChangeRequestName"
+	warpMenuUpdateEventReason        = "WarpMenu"
+	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
+	warpMenuUpdateEventAction        = "WarpMenuEntryReconcile"
+	reasonMenuGenerationFailed       = "MenuGenerationFailed"
+	reasonMenuGenerated              = "MenuGenerated"
 )
 
 type WarpMenuConfigReconciler struct {
@@ -243,7 +242,7 @@ func (r *WarpMenuConfigReconciler) triggerDummyReconcile(ctx context.Context, ob
 	// If a resource is not found, the reconciler recreates the warp menu, too.
 	reconcileRequests := []reconcile.Request{{
 		NamespacedName: types2.NamespacedName{
-			Name:      dummyWarpMenuConfigMapChangeRequestName,
+			Name:      config.WarpConfigMap,
 			Namespace: obj.GetNamespace(),
 		}}}
 	return reconcileRequests
