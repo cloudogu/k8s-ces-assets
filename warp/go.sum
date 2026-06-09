@@ -12,6 +12,8 @@ github.com/cloudogu/k8s-warp-menu-entry-lib v0.0.0-20260609080443-dd12c2be07c6 h
 github.com/cloudogu/k8s-warp-menu-entry-lib v0.0.0-20260609080443-dd12c2be07c6/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
 github.com/cloudogu/k8s-warp-menu-entry-lib v0.1.0 h1:QtnZGtBp3AyN8ztq7CF7NQUF+3a8P5ZkUB7UX+cRajE=
 github.com/cloudogu/k8s-warp-menu-entry-lib v0.1.0/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.2.0 h1:JLK/sJdENWhju0l/aTt3g10Rv4jv64dmNk1JWvtvIVs=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.2.0/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
