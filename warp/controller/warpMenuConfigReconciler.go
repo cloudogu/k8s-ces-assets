@@ -21,7 +21,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -122,8 +121,10 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&warpmenu.WarpMenuEntry{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&corev1.ConfigMap{},
-			handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToWarpMenuEntries),
-			builder.WithPredicates(r.filterConfigMapsByNamespacedName()),
+			handler.EnqueueRequestsFromMapFunc(r.triggerDummyReconcile),
+			builder.WithPredicates(predicate.NewPredicateFuncs(func(object client.Object) bool {
+				return object.GetName() == config.WarpConfigMap
+			})),
 		).
 		Complete(r)
 }
@@ -236,32 +237,15 @@ func (r *WarpMenuConfigReconciler) createErrorStatusCondition(generation int64, 
 	return condition
 }
 
-func (r *WarpMenuConfigReconciler) mapConfigMapToWarpMenuEntries(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *WarpMenuConfigReconciler) triggerDummyReconcile(ctx context.Context, obj client.Object) []reconcile.Request {
 	log.FromContext(ctx).Info(fmt.Sprintf("warp config changed - creating a reconcile request to recreate all warp entries:  Object triggering the reconcile: [Namespace: %s ,Name: %s]  %v", obj.GetNamespace(), obj.GetName(), ctx))
 
+	// We don't have to list all entries and reconcile them because one reconciliation recreates the complete warp menu.
+	// If a resource is not found, the reconciler recreates the warp menu, too.
 	reconcileRequests := []reconcile.Request{{
 		NamespacedName: types2.NamespacedName{
 			Name:      dummyWarpMenuConfigMapChangeRequestName,
 			Namespace: obj.GetNamespace(),
 		}}}
 	return reconcileRequests
-
-}
-
-func (r *WarpMenuConfigReconciler) filterConfigMapsByNamespacedName() predicate.Predicate {
-
-	return predicate.Funcs{
-		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
-			return e.Object.GetName() == config.WarpConfigMap
-		},
-		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
-			return e.Object.GetName() == config.WarpConfigMap
-		},
-		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
-			return e.ObjectOld.GetName() == config.WarpConfigMap
-		},
-		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
-			return e.Object.GetName() == config.WarpConfigMap
-		},
-	}
 }

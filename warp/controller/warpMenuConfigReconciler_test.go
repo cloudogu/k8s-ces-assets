@@ -21,7 +21,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -284,76 +283,9 @@ func TestMapConfigMapToWarpMenuEntries(t *testing.T) {
 				Namespace: testNamespace,
 			}}}
 
-		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
+		reconcileRequest := reconciler.triggerDummyReconcile(context.Background(), configmap)
 
 		assert.Equal(t, expectedReconcileRequest, reconcileRequest)
-	})
-
-}
-
-func TestFilterConfigMapsByNamespacedName(t *testing.T) {
-	scheme := runtime.NewScheme()
-	err := warpmenu.AddToScheme(scheme)
-	assert.NoError(t, err)
-
-	clientMock := getClientMock(t, []warpmenu.WarpMenuEntry([]warpmenu.WarpMenuEntry(nil)))
-	reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
-	pred := reconciler.filterConfigMapsByNamespacedName()
-
-	t.Run("CreateEvent - Allowed ConfigMap", func(t *testing.T) {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
-		}
-		ev := event.CreateEvent{Object: cm}
-		if !pred.Create(ev) {
-			t.Errorf("Expected CreateEvent to be TRUE for allowed configmap")
-		}
-	})
-	t.Run("CreateEvent - Disallowed ConfigMap Name", func(t *testing.T) {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: "wrong-name", Namespace: testNamespace},
-		}
-		ev := event.CreateEvent{Object: cm}
-		if pred.Create(ev) {
-			t.Errorf("Expected CreateEvent to be FALSE for wrong name")
-		}
-	})
-	t.Run("UpdateEvent - Data changed on allowed ConfigMap", func(t *testing.T) {
-		oldCm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
-			Data:       map[string]string{"key": "old-value"},
-		}
-		newCm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
-			Data:       map[string]string{"key": "new-value"}, // Inhalt hat sich geändert
-		}
-		ev := event.UpdateEvent{ObjectOld: oldCm, ObjectNew: newCm}
-		if !pred.Update(ev) {
-			t.Errorf("Expected UpdateEvent to be TRUE because data changed")
-		}
-	})
-	t.Run("DeleteEvent - Allowed ConfigMap", func(t *testing.T) {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
-		}
-		ev := event.DeleteEvent{Object: cm}
-		if !pred.Delete(ev) {
-			t.Errorf("Expected DeleteEvent to be TRUE for allowed configmap")
-		}
-	})
-	t.Run("GenericEvent - Allowed ConfigMap", func(t *testing.T) {
-		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
-		}
-
-		// Definition des Typed Generic Event mit [client.Object] als Typ-Parameter
-		ev := event.TypedGenericEvent[client.Object]{
-			Object: cm,
-		}
-
-		if !pred.Generic(ev) {
-			t.Errorf("Expected GenericEvent to be TRUE for allowed configmap")
-		}
 	})
 
 }
