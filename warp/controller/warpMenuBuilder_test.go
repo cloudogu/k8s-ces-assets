@@ -1,0 +1,127 @@
+package controller
+
+import (
+	"testing"
+
+	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
+	"github.com/cloudogu/warp-assets/config"
+	"github.com/cloudogu/warp-assets/controller/types"
+	"github.com/stretchr/testify/assert"
+	controllerruntime "sigs.k8s.io/controller-runtime"
+)
+
+func TestBuildWarpMenu(t *testing.T) {
+
+	t.Run("should build empty menu with empty entry list", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{}}
+
+		categories := builder.buildCategories(&warpmenu.WarpMenuEntryList{})
+		assert.Equal(t, 0, len(categories))
+	})
+
+	t.Run("should build categories for simple entry list", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{}}
+
+		categories := builder.buildCategories(&warpmenu.WarpMenuEntryList{
+			Items: []warpmenu.WarpMenuEntry{
+				buildWarpMenuEntry("dogu", "Category", "/jenkins", "Jenkins DE", "Jenkins EN", false),
+			},
+		})
+		checkCategories(t, categories, 1, "Category")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Jenkins DE", "Jenkins EN", "/jenkins")
+	})
+
+	t.Run("should build categories for a complex entry list", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{
+			"Category A": 100,
+			"Category B": 200,
+		}}
+
+		categories := builder.buildCategories(&warpmenu.WarpMenuEntryList{
+			Items: []warpmenu.WarpMenuEntry{
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", false),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu3", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+			},
+		})
+		checkCategories(t, categories, 2, "Category B", "Category A")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
+		assert.Equal(t, 2, len(categories[1].Entries))
+		checkEntry(t, categories[1].Entries[0], "Jenkins A", "Jenkins A EN", "/alpha")
+		checkEntry(t, categories[1].Entries[1], "Jenkins A2", "Jenkins A2 EN", "/aleph")
+	})
+
+	t.Run("should build categories for an entry list with partly defined categories", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{
+			"Category A": 100,
+			"Category B": 200,
+		}}
+
+		categories := builder.buildCategories(&warpmenu.WarpMenuEntryList{
+			Items: []warpmenu.WarpMenuEntry{
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Dogu A", "Dogu A EN", false),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Dogu B", "Dogu B EN", false),
+				buildWarpMenuEntry("dogu3", "Category C", "/gamma", "Dogu C", "Dogu C EN", false),
+			},
+		})
+		checkCategories(t, categories, 3, "Category B", "Category A", "Category C")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Dogu B", "Dogu B EN", "/beta")
+		assert.Equal(t, 1, len(categories[1].Entries))
+		checkEntry(t, categories[1].Entries[0], "Dogu A", "Dogu A EN", "/alpha")
+		assert.Equal(t, 1, len(categories[2].Entries))
+		checkEntry(t, categories[2].Entries[0], "Dogu C", "Dogu C EN", "/gamma")
+	})
+
+	t.Run("should omit disabled entries", func(t *testing.T) {
+		builder := WarpMenuBuilder{config.Order{}}
+
+		categories := builder.buildCategories(&warpmenu.WarpMenuEntryList{
+			Items: []warpmenu.WarpMenuEntry{
+				buildWarpMenuEntry("dogu1", "Category A", "/alpha", "Jenkins A", "Jenkins A EN", true),
+				buildWarpMenuEntry("dogu2", "Category B", "/beta", "Jenkins B", "Jenkins B EN", false),
+				buildWarpMenuEntry("dogu3", "Category A", "/aleph", "Jenkins A2", "Jenkins A2 EN", false),
+			},
+		})
+		checkCategories(t, categories, 2, "Category A", "Category B")
+		assert.Equal(t, 1, len(categories[0].Entries))
+		checkEntry(t, categories[0].Entries[0], "Jenkins A2", "Jenkins A2 EN", "/aleph")
+		assert.Equal(t, 1, len(categories[1].Entries))
+		checkEntry(t, categories[1].Entries[0], "Jenkins B", "Jenkins B EN", "/beta")
+	})
+}
+
+func checkEntry(t *testing.T, entry types.Entry, expectedGermanDisplayName, expectedEnglishDisplayName, expectedPath string) {
+	assert.Equal(t, expectedGermanDisplayName, entry.DisplayName)
+	assert.Equal(t, expectedPath, entry.Href)
+	assert.Equal(t, types.TARGET_SELF, entry.Target)
+	assert.Equal(t, expectedGermanDisplayName, entry.Localization["de"])
+	assert.Equal(t, expectedEnglishDisplayName, entry.Localization["en"])
+}
+
+func checkCategories(t *testing.T, categories types.Categories, expectedLength int, expectedNames ...string) {
+	assert.Equal(t, expectedLength, len(categories))
+	for i, category := range categories {
+		assert.Equal(t, expectedNames[i], category.Title)
+	}
+}
+
+func buildWarpMenuEntry(name, category, path, displayNameDe, displayNameEn string, disabled bool) warpmenu.WarpMenuEntry {
+	return warpmenu.WarpMenuEntry{
+		ObjectMeta: controllerruntime.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+		},
+		Spec: warpmenu.WarpMenuEntrySpec{
+			Category: category,
+			Path:     path,
+			DisplayName: warpmenu.DisplayName{
+				DE: displayNameDe,
+				EN: displayNameEn,
+			},
+			Disabled: disabled,
+		},
+	}
+}

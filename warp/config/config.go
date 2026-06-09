@@ -14,7 +14,6 @@ import (
 
 const (
 	WarpConfigMap = "k8s-ces-warp-config"
-	MenuConfigMap = "k8s-ces-menu-json"
 	StageLocal    = "local"
 	DevConfigPath = "k8s/dev-resources/k8s-ces-warp-config.yaml"
 	StageEnvVar   = "STAGE"
@@ -34,24 +33,7 @@ type Order map[string]int
 
 // Configuration for warp menu creation
 type Configuration struct {
-	Sources []Source
-	Target  string
-	Order   Order
-	Support []SupportSource
-}
-
-// Source in global config
-type Source struct {
-	Path string
-	Type string
-	Tag  string
-}
-
-// SupportSource for SupportEntries from yaml
-type SupportSource struct {
-	Identifier string
-	External   bool
-	Href       string
+	Order Order
 }
 
 // ReadConfiguration reads the service discovery configuration. Either from file in development mode with environment
@@ -103,32 +85,30 @@ func readWarpConfigFromCluster(ctx context.Context, client client.Client, namesp
 	return conf, nil
 }
 
-func ReadWatchNamespace() (string, error) {
-	watchNamespace, found := os.LookupEnv(namespaceEnvVar)
+func getEnvlookup(env, errormessage, logMessage string) (string, error) {
+	envValue, found := os.LookupEnv(env)
 	if !found {
-		return "", fmt.Errorf("failed to read namespace to watch from environment variable [%s], please set the variable and try again", namespaceEnvVar)
+		return "", fmt.Errorf(errormessage, env)
 	}
-	logger.Info(fmt.Sprintf("found target namespace: [%s]", watchNamespace))
+	logger.Info(fmt.Sprintf(logMessage, env))
 
-	return watchNamespace, nil
+	return envValue, nil
+}
+
+func ReadWatchNamespace() (string, error) {
+	return getEnvlookup(namespaceEnvVar,
+		"failed to read namespace to watch from environment variable [%s], please set the variable and try again",
+		"found target namespace: [%s]")
 }
 
 func ReadWarpPath() (string, error) {
-	warpPath, found := os.LookupEnv(warpPathEnvVar)
-	if !found {
-		return "", fmt.Errorf("failed to read warp path to watch from environment variable [%s], please set the variable and try again", warpPathEnvVar)
-	}
-	logger.Info(fmt.Sprintf("found target warp path: [%s]", warpPath))
-
-	return warpPath, nil
+	return getEnvlookup(warpPathEnvVar,
+		"failed to read warp path to watch from environment variable [%s], please set the variable and try again",
+		"found target warp path: [%s]")
 }
 
 func ReadDeploymentName() (string, error) {
-	deploymentName, found := os.LookupEnv(deploymentNameEnvVar)
-	if !found {
-		return "", fmt.Errorf("failed to read deployment name from environment variable [%s], please set the variable and try again", deploymentNameEnvVar)
-	}
-	logger.Info(fmt.Sprintf("found target depolyment name: [%s]", deploymentName))
-
-	return deploymentName, nil
+	return getEnvlookup(deploymentNameEnvVar,
+		"failed to read deployment name from environment variable [%s], please set the variable and try again",
+		"found target depolyment name: [%s]")
 }

@@ -4,10 +4,10 @@ import "github.com/pkg/errors"
 
 // Entry link in the warp menu
 type Entry struct {
-	DisplayName string
-	Href        string
-	Title       string
-	Target      Target
+	DisplayName  string
+	Href         string
+	Target       Target
+	Localization map[string]string
 }
 
 // Target defines the target of the link

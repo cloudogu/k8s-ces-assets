@@ -5,8 +5,8 @@ ARTIFACT_ID_MAINTENANCE=${ARTIFACT_ID}-maintenance
 VERSION=2.0.2
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 
-MAKEFILES_VERSION=10.5.0
-GOTAG=1.26.0
+MAKEFILES_VERSION=10.9.1
+GOTAG=1.26.4
 LINT_VERSION=v2.9.0
 
 ADDITIONAL_CLEAN=clean_charts
@@ -125,7 +125,7 @@ $(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
 
 $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
 	@echo "run static analysis with export to checkstyle format"
-	@$(LINT) $(LINTFLAGS) --output.checkstyle.path stdout run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
+	@$(LINT) $(LINTFLAGS) --output.checkstyle.path $@ run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER)
 
 
 clean_charts:

@@ -24,16 +24,16 @@ func TestTarget_MarshalJSON(t *testing.T) {
 
 func TestEntries_Swap(t *testing.T) {
 	// given
-	entry1 := Entry{Title: "1"}
-	entry2 := Entry{Title: "2"}
+	entry1 := Entry{DisplayName: "1"}
+	entry2 := Entry{DisplayName: "2"}
 	entries := Entries{entry1, entry2}
 
 	// when
 	entries.Swap(0, 1)
 
 	// then
-	assert.Equal(t, "2", entries[0].Title)
-	assert.Equal(t, "1", entries[1].Title)
+	assert.Equal(t, "2", entries[0].DisplayName)
+	assert.Equal(t, "1", entries[1].DisplayName)
 }
 
 func testMarshalJSON(t *testing.T, target Target, expected string) {
