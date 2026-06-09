@@ -279,7 +279,7 @@ func TestMapConfigMapToWarpMenuEntries(t *testing.T) {
 
 		expectedReconcileRequest := []reconcile.Request{{
 			NamespacedName: types.NamespacedName{
-				Name:      dummyWarpMenuConfigMapChangeRequestName,
+				Name:      config.WarpConfigMap,
 				Namespace: testNamespace,
 			}}}
 
