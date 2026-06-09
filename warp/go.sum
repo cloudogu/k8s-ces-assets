@@ -8,6 +8,8 @@ github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UF
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cloudogu/cesapp-lib v0.18.1 h1:LMdGktIefm/PuhdPqpLTPvjY1smO06EEGBbRSAaYi7U=
 github.com/cloudogu/cesapp-lib v0.18.1/go.mod h1:J05eXFxnz4enZblABlmiVTZaUtJ+LIhlJ2UF6l9jpDw=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.0.0-20260609080443-dd12c2be07c6 h1:pkACbOGOEy8sfZdGvd33ZqrQGrGZVQUvJYpFQUkBmzQ=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.0.0-20260609080443-dd12c2be07c6/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
 github.com/cloudogu/k8s-warp-menu-entry-lib v0.1.0 h1:QtnZGtBp3AyN8ztq7CF7NQUF+3a8P5ZkUB7UX+cRajE=
 github.com/cloudogu/k8s-warp-menu-entry-lib v0.1.0/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=

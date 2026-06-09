@@ -33,7 +33,6 @@ const (
 	warpMenuUpdateEventAction               = "WarpMenuEntryReconcile"
 	reasonMenuGenerationFailed              = "MenuGenerationFailed"
 	reasonMenuGenerated                     = "MenuGenerated"
-	conditionVisible                        = "Visible"
 	dummyWarpMenuConfigMapChangeRequestName = "dummyWarpMenuConfigMapChangeRequestName"
 )
 
@@ -209,7 +208,7 @@ func (r *WarpMenuConfigReconciler) createSuccessfulStatusCondition(generation in
 
 func (r *WarpMenuConfigReconciler) createVisibleStatusCondition(disabled bool, generation int64) v1.Condition {
 	condition := v1.Condition{
-		Type:               conditionVisible,
+		Type:               warpmenu.ConditionVisible,
 		Status:             v1.ConditionTrue,
 		ObservedGeneration: generation,
 	}

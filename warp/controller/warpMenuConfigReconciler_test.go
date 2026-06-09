@@ -348,7 +348,7 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 	assert.Equal(t, 2, len(updatedWarpMenuEntry.Status.Conditions))
 
 	actualReadyCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, warpmenu.ConditionReady)
-	actualVisibleCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, conditionVisible)
+	actualVisibleCondition := meta.FindStatusCondition(updatedWarpMenuEntry.Status.Conditions, warpmenu.ConditionVisible)
 
 	expectedReadyCondition := &metav1.Condition{
 		Type:               warpmenu.ConditionReady,
@@ -359,7 +359,7 @@ func verifyWarpMenuStatus(t *testing.T, err error, clientMock client.WithWatch, 
 		ObservedGeneration: updatedWarpMenuEntry.Generation,
 	}
 	expectedVisibleCondition := &metav1.Condition{
-		Type:               conditionVisible,
+		Type:               warpmenu.ConditionVisible,
 		Status:             metav1.ConditionTrue,
 		LastTransitionTime: actualVisibleCondition.LastTransitionTime,
 		Reason:             warpmenu.ReasonEntryRendered,
