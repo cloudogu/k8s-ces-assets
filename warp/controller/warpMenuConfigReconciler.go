@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -28,12 +29,13 @@ import (
 )
 
 const (
-	warpMenuUpdateEventReason        = "WarpMenu"
-	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
-	warpMenuUpdateEventAction        = "WarpMenuEntryReconcile"
-	reasonMenuGenerationFailed       = "MenuGenerationFailed"
-	reasonMenuGenerated              = "MenuGenerated"
-	conditionVisible                 = "Visible"
+	warpMenuUpdateEventReason               = "WarpMenu"
+	errorOnWarpMenuUpdateEventReason        = "ErrUpdateWarpMenu"
+	warpMenuUpdateEventAction               = "WarpMenuEntryReconcile"
+	reasonMenuGenerationFailed              = "MenuGenerationFailed"
+	reasonMenuGenerated                     = "MenuGenerated"
+	conditionVisible                        = "Visible"
+	dummyWarpMenuConfigMapChangeRequestName = "dummyWarpMenuConfigMapChangeRequestName"
 )
 
 type WarpMenuConfigReconciler struct {
@@ -121,7 +123,7 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&corev1.ConfigMap{},
 			handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToWarpMenuEntries),
-			builder.WithPredicates(predicate.ResourceVersionChangedPredicate{}),
+			builder.WithPredicates(r.filterConfigMapsByNamespacedName()),
 		).
 		Complete(r)
 }
@@ -235,46 +237,31 @@ func (r *WarpMenuConfigReconciler) createErrorStatusCondition(generation int64, 
 }
 
 func (r *WarpMenuConfigReconciler) mapConfigMapToWarpMenuEntries(ctx context.Context, obj client.Object) []reconcile.Request {
-	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("warp menu configmap change detected:  configmap: [%s , %s]  %v", obj.GetNamespace(), obj.GetName(), ctx))
+	log.FromContext(ctx).Info(fmt.Sprintf("warp config changed - creating a reconcile request to recreate all warp entries:  Object triggering the reconcile: [Namespace: %s ,Name: %s]  %v", obj.GetNamespace(), obj.GetName(), ctx))
 
-	//Get the watch namespace
-	watchNamespace, err := config.ReadWatchNamespace()
-	if err != nil {
-		logger.Error(err, "error occured while getting the watchNamespace")
-		return nil
+	reconcileRequests := []reconcile.Request{{
+		NamespacedName: types2.NamespacedName{
+			Name:      dummyWarpMenuConfigMapChangeRequestName,
+			Namespace: obj.GetNamespace(),
+		}}}
+	return reconcileRequests
+
+}
+
+func (r *WarpMenuConfigReconciler) filterConfigMapsByNamespacedName() predicate.Predicate {
+
+	return predicate.Funcs{
+		CreateFunc: func(e event.TypedCreateEvent[client.Object]) bool {
+			return e.Object.GetName() == config.WarpConfigMap
+		},
+		DeleteFunc: func(e event.TypedDeleteEvent[client.Object]) bool {
+			return e.Object.GetName() == config.WarpConfigMap
+		},
+		UpdateFunc: func(e event.TypedUpdateEvent[client.Object]) bool {
+			return e.ObjectOld.GetName() == config.WarpConfigMap
+		},
+		GenericFunc: func(e event.TypedGenericEvent[client.Object]) bool {
+			return e.Object.GetName() == config.WarpConfigMap
+		},
 	}
-	//Ensure that the namespace and name is correct
-	if obj.GetName() != config.WarpConfigMap && obj.GetNamespace() != watchNamespace {
-		logger.Info("the name and namespace of the configmap does not match the configuration!")
-		return nil
-	}
-
-	// Get all warp menu entries and reconcile
-	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
-	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(obj.GetNamespace()))
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("no warp menu entries found. No need to call reconcile because of warp menu configmap change.")
-			return nil
-		} else {
-			logger.Error(err, "error occurred when getting the warp menu entries to reconcile because of warp menu configmap change.")
-			return nil
-		}
-	}
-
-	logger.Info(fmt.Sprintf("creating reconcile requests for warp menu entries because of warp menu configmap change... Number of warpmenu entries: %d ", len(warpMenuEntries.Items)))
-	// create the reconcile requests in the namespace
-	var requests []reconcile.Request
-	for _, warpMenuEntry := range warpMenuEntries.Items {
-		requests = append(requests, reconcile.Request{
-			NamespacedName: types2.NamespacedName{
-				Name:      warpMenuEntry.Name,
-				Namespace: warpMenuEntry.Namespace,
-			},
-		})
-	}
-
-	return requests
-
 }

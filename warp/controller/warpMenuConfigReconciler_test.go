@@ -21,6 +21,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -235,9 +236,9 @@ func TestWarpMenuReconcile(t *testing.T) {
 
 func validateRecorderEvents(t *testing.T, fakeRecorder *events.FakeRecorder, reason string, notes string) {
 	select {
-	case event := <-fakeRecorder.Events:
-		assert.Contains(t, event, reason)
-		assert.Contains(t, event, notes)
+	case fakeEvent := <-fakeRecorder.Events:
+		assert.Contains(t, fakeEvent, reason)
+		assert.Contains(t, fakeEvent, notes)
 	default:
 		t.Fatal("Expected an event to be recorded, but found none!")
 	}
@@ -266,90 +267,95 @@ func TestMapConfigMapToWarpMenuEntries(t *testing.T) {
 
 	t.Run("should call reconcile when WarpConfigMap is modified", func(t *testing.T) {
 
-		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
-		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
-		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
-
-		scheme := runtime.NewScheme()
-		err := warpmenu.AddToScheme(scheme)
-		assert.NoError(t, err)
-
-		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
-		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
-		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
-
-		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
-
-		configmap := &corev1.ConfigMap{}
-		configmap.Name = config.WarpConfigMap
-		configmap.Namespace = testNamespace
-
-		reconcile1 := reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      firstEntry.Name,
-				Namespace: firstEntry.Namespace,
-			},
-		}
-		reconcile2 := reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      secondEntry.Name,
-				Namespace: secondEntry.Namespace,
-			},
-		}
-
-		expectedReconcileRequest := []reconcile.Request{reconcile1, reconcile2}
-		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
-
-		assert.Equal(t, expectedReconcileRequest, reconcileRequest)
-	})
-
-	t.Run("should finish successfully when WarpConfigMap is modified and there are no warp menu entries", func(t *testing.T) {
-
-		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
-		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
-		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
-
 		scheme := runtime.NewScheme()
 		err := warpmenu.AddToScheme(scheme)
 		assert.NoError(t, err)
 
 		clientMock := getClientMock(t, []warpmenu.WarpMenuEntry([]warpmenu.WarpMenuEntry(nil)))
-
 		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
 
 		configmap := &corev1.ConfigMap{}
 		configmap.Name = config.WarpConfigMap
 		configmap.Namespace = testNamespace
 
-		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
-
-		assert.Equal(t, []reconcile.Request([]reconcile.Request(nil)), reconcileRequest)
-	})
-
-	t.Run("should return null if there is an error getting the warp menu entry list when WarpConfigMap is modified ", func(t *testing.T) {
-
-		watchNamespace, _ := os.LookupEnv("WATCH_NAMESPACE")
-		defer os.Setenv("WATCH_NAMESPACE", watchNamespace)
-		require.NoError(t, os.Setenv("WATCH_NAMESPACE", testNamespace))
-
-		scheme := runtime.NewScheme()
-		err := warpmenu.AddToScheme(scheme)
-		assert.NoError(t, err)
-
-		firstEntry := buildWarpMenuEntry("dogu1", "DevApps", "/dogu_1", "Dogu 1", "Dogu 1 en", false)
-		secondEntry := buildWarpMenuEntry("dogu2", "Admin", "/dogu_2", "Dogu 2", "Dogu 2 en", false)
-		clientMock := getClientMockWithListError(t, []warpmenu.WarpMenuEntry{firstEntry, secondEntry})
-
-		reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
-
-		configmap := &corev1.ConfigMap{}
-		configmap.Name = config.WarpConfigMap
-		configmap.Namespace = testNamespace
+		expectedReconcileRequest := []reconcile.Request{{
+			NamespacedName: types.NamespacedName{
+				Name:      dummyWarpMenuConfigMapChangeRequestName,
+				Namespace: testNamespace,
+			}}}
 
 		reconcileRequest := reconciler.mapConfigMapToWarpMenuEntries(context.Background(), configmap)
 
-		assert.Equal(t, []reconcile.Request([]reconcile.Request(nil)), reconcileRequest)
+		assert.Equal(t, expectedReconcileRequest, reconcileRequest)
 	})
+
+}
+
+func TestFilterConfigMapsByNamespacedName(t *testing.T) {
+	scheme := runtime.NewScheme()
+	err := warpmenu.AddToScheme(scheme)
+	assert.NoError(t, err)
+
+	clientMock := getClientMock(t, []warpmenu.WarpMenuEntry([]warpmenu.WarpMenuEntry(nil)))
+	reconciler := NewWarpMenuReconciler(clientMock, nil, "doesnotmatter", testDeploymentName)
+	pred := reconciler.filterConfigMapsByNamespacedName()
+
+	t.Run("CreateEvent - Allowed ConfigMap", func(t *testing.T) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
+		}
+		ev := event.CreateEvent{Object: cm}
+		if !pred.Create(ev) {
+			t.Errorf("Expected CreateEvent to be TRUE for allowed configmap")
+		}
+	})
+	t.Run("CreateEvent - Disallowed ConfigMap Name", func(t *testing.T) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: "wrong-name", Namespace: testNamespace},
+		}
+		ev := event.CreateEvent{Object: cm}
+		if pred.Create(ev) {
+			t.Errorf("Expected CreateEvent to be FALSE for wrong name")
+		}
+	})
+	t.Run("UpdateEvent - Data changed on allowed ConfigMap", func(t *testing.T) {
+		oldCm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
+			Data:       map[string]string{"key": "old-value"},
+		}
+		newCm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
+			Data:       map[string]string{"key": "new-value"}, // Inhalt hat sich geändert
+		}
+		ev := event.UpdateEvent{ObjectOld: oldCm, ObjectNew: newCm}
+		if !pred.Update(ev) {
+			t.Errorf("Expected UpdateEvent to be TRUE because data changed")
+		}
+	})
+	t.Run("DeleteEvent - Allowed ConfigMap", func(t *testing.T) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
+		}
+		ev := event.DeleteEvent{Object: cm}
+		if !pred.Delete(ev) {
+			t.Errorf("Expected DeleteEvent to be TRUE for allowed configmap")
+		}
+	})
+	t.Run("GenericEvent - Allowed ConfigMap", func(t *testing.T) {
+		cm := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Name: config.WarpConfigMap, Namespace: testNamespace},
+		}
+
+		// Definition des Typed Generic Event mit [client.Object] als Typ-Parameter
+		ev := event.TypedGenericEvent[client.Object]{
+			Object: cm,
+		}
+
+		if !pred.Generic(ev) {
+			t.Errorf("Expected GenericEvent to be TRUE for allowed configmap")
+		}
+	})
+
 }
 
 func getExpectedWarpMenuEntry2() []WarpMenuEntry {
