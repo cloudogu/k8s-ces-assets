@@ -54,6 +54,8 @@ github.com/cloudogu/ces-commons-lib v0.0.0-20260205153713-024e83837014/go.mod h1
 github.com/cloudogu/cesapp-lib v0.15.0/go.mod h1:52PfkrFYg54FjF8Se8P9b1zOfAhmg3PBFKr7YfS+Q+8=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20260219140143-05cf54f445aa h1:J/iClNJa6kvWogJXrUK1lcLZpo/sUdZtaBT9gdDlrbw=
 github.com/cloudogu/k8s-registry-lib v0.2.2-0.20260219140143-05cf54f445aa/go.mod h1:mWuwjoL/42P2OLR5f5YTAW//jwPKLlvFAafixR0x/RA=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.2.0 h1:JLK/sJdENWhju0l/aTt3g10Rv4jv64dmNk1JWvtvIVs=
+github.com/cloudogu/k8s-warp-menu-entry-lib v0.2.0/go.mod h1:UCm9Mlf8PbjjA8vtS2uOo3WJ82tZw34DsLjIqVi5f/s=
 github.com/cloudogu/retry-lib v0.1.0 h1:gaAmtyjUqgHbxfCWMeUn0qnGbDH4TtZVSQkbZ1Nq6eI=
 github.com/cloudogu/retry-lib v0.1.0/go.mod h1:iG9y6zx8oJZT5ULtl9koZkYJLRsqam/2mTU+rgjxQ0g=
 github.com/cncf/xds/go v0.0.0-20250121191232-2f005788dc42 h1:Om6kYQYDUk5wWbT0t0q6pvyM49i9XZAv9dDrkDA7gjk=
