@@ -2,9 +2,10 @@ package types
 
 // Category categories multiple entries in the warp menu
 type Category struct {
-	Title   string
-	Order   int
-	Entries Entries
+	Identifier string
+	Title      string
+	Order      int
+	Entries    Entries
 }
 
 func (c Category) String() string {
@@ -20,7 +21,7 @@ func (c Categories) Len() int {
 
 func (c Categories) Less(i, j int) bool {
 	if c[i].Order == c[j].Order {
-		return c[i].Title < c[j].Title
+		return c[i].Identifier < c[j].Identifier
 	}
 	return c[i].Order > c[j].Order
 }

@@ -4,6 +4,7 @@ import "github.com/pkg/errors"
 
 // Entry link in the warp menu
 type Entry struct {
+	Identifier   string
 	DisplayName  string
 	Href         string
 	Target       Target
@@ -43,7 +44,7 @@ func (e Entries) Len() int {
 }
 
 func (e Entries) Less(i, j int) bool {
-	return e[i].DisplayName < e[j].DisplayName
+	return e[i].Identifier < e[j].Identifier
 }
 
 func (e Entries) Swap(i, j int) {

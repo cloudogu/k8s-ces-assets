@@ -71,8 +71,8 @@ func TestEntries_Len(t *testing.T) {
 
 func TestEntries_Less(t *testing.T) {
 	// given
-	entryA := Entry{DisplayName: "A"}
-	entryB := Entry{DisplayName: "B"}
+	entryA := Entry{Identifier: "A", DisplayName: "B"}
+	entryB := Entry{Identifier: "B", DisplayName: "A"}
 	entries := Entries{entryA, entryB}
 
 	// when

@@ -33,10 +33,10 @@ func TestCategories_Less(t *testing.T) {
 		assert.Equal(t, false, isLess)
 	})
 
-	t.Run("should orientate on title with same orders", func(t *testing.T) {
+	t.Run("should orientate on identifier with same orders", func(t *testing.T) {
 		// given
-		a := &Category{Order: 100, Title: "A"}
-		b := &Category{Order: 100, Title: "B"}
+		a := &Category{Order: 100, Identifier: "A", Title: "B"}
+		b := &Category{Order: 100, Identifier: "B", Title: "A"}
 		categories := Categories{a, b}
 
 		// when
