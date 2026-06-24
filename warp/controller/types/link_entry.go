@@ -1,6 +1,8 @@
 package types
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+)
 
 // Entry represents a single link in the warp menu.
 type Entry struct {
@@ -29,7 +31,7 @@ func (target Target) MarshalJSON() ([]byte, error) {
 	case TARGET_EXTERNAL:
 		return target.asJSONString("external"), nil
 	default:
-		return nil, errors.Errorf("unknown target type %d", target)
+		return nil, fmt.Errorf("unknown target type %d", target)
 	}
 }
 
