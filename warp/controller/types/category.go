@@ -1,24 +1,25 @@
 package types
 
-// Category categories multiple entries in the warp menu
+// Category groups related entries under a named section in the warp menu.
 type Category struct {
-	Identifier string
-	Title      string
-	Order      int
-	Entries    Entries
+	// Identifier is the locale-independent key used for deduplication and sorting.
+	Identifier  string
+	DisplayName TranslationMap
+	// Order controls the display position; higher values appear first.
+	Order   int
+	Entries Entries
 }
 
-func (c Category) String() string {
-	return c.Title
-}
-
-// Categories collection of warp Categories
+// Categories is an ordered collection of Category pointers.
 type Categories []*Category
 
+// Len implements sort.Interface.
 func (c Categories) Len() int {
 	return len(c)
 }
 
+// Less implements sort.Interface. Categories with a higher Order appear first;
+// ties are broken by Identifier ascending.
 func (c Categories) Less(i, j int) bool {
 	if c[i].Order == c[j].Order {
 		return c[i].Identifier < c[j].Identifier
@@ -26,6 +27,7 @@ func (c Categories) Less(i, j int) bool {
 	return c[i].Order > c[j].Order
 }
 
+// Swap implements sort.Interface.
 func (c Categories) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
@@ -37,10 +39,10 @@ func (c *Categories) InsertCategories(newCategories Categories) {
 	}
 }
 
-// InsertCategory adds a new category to the slice. If the title are same the entries will be merged.
+// InsertCategory adds a new category to the slice. If the identifier are same the entries will be merged.
 func (c *Categories) InsertCategory(newCategory *Category) {
 	for _, category := range *c {
-		if category.Title == newCategory.Title {
+		if category.Identifier == newCategory.Identifier {
 			category.Entries = append(category.Entries, newCategory.Entries...)
 			return
 		}

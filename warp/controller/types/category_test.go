@@ -7,73 +7,57 @@ import (
 )
 
 func TestCategories_Len(t *testing.T) {
-	// given
-	a := &Category{}
-	b := &Category{}
-	categories := Categories{a, b}
-
-	// when
-	length := categories.Len()
-
-	// then
-	assert.Equal(t, 2, length)
+	categories := Categories{&Category{}, &Category{}}
+	assert.Equal(t, 2, categories.Len())
 }
 
 func TestCategories_Less(t *testing.T) {
-	t.Run("less with different orders", func(t *testing.T) {
-		// given
-		a := &Category{Order: 1}
-		b := &Category{Order: 100}
-		categories := Categories{a, b}
-
-		// when
-		isLess := categories.Less(0, 1)
-
-		// then
-		assert.Equal(t, false, isLess)
-	})
-
-	t.Run("should orientate on identifier with same orders", func(t *testing.T) {
-		// given
-		a := &Category{Order: 100, Identifier: "A", Title: "B"}
-		b := &Category{Order: 100, Identifier: "B", Title: "A"}
-		categories := Categories{a, b}
-
-		// when
-		isLess := categories.Less(0, 1)
-
-		// then
-		assert.Equal(t, true, isLess)
-	})
+	tests := []struct {
+		name     string
+		a, b     *Category
+		expected bool
+	}{
+		{
+			name:     "higher order sorts before lower order",
+			a:        &Category{Order: 1},
+			b:        &Category{Order: 100},
+			expected: false,
+		},
+		{
+			name:     "equal order falls back to identifier ascending",
+			a:        &Category{Order: 100, Identifier: "A"},
+			b:        &Category{Order: 100, Identifier: "B"},
+			expected: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			categories := Categories{tt.a, tt.b}
+			assert.Equal(t, tt.expected, categories.Less(0, 1))
+		})
+	}
 }
 
 func TestCategories_Swap(t *testing.T) {
-	// given
 	a := &Category{Order: 1}
 	b := &Category{Order: 100}
 	categories := Categories{a, b}
 
-	// when
 	categories.Swap(0, 1)
 
-	// then
-	assert.Equal(t, categories[0], b)
-	assert.Equal(t, categories[1], a)
+	assert.Equal(t, b, categories[0])
+	assert.Equal(t, a, categories[1])
 }
 
-func TestCategories_insertCategories(t *testing.T) {
-	// given
-	a := &Category{Order: 1, Title: "a"}
-	b := &Category{Order: 100, Title: "b"}
+func TestCategories_InsertCategories(t *testing.T) {
+	a := &Category{Order: 1, Identifier: "a"}
+	b := &Category{Order: 100, Identifier: "b"}
 	categories := Categories{a, b}
-	aa := &Category{Order: 1, Title: "aa"}
-	bb := &Category{Order: 100, Title: "bb"}
-	addCategories := Categories{aa, bb}
+	aa := &Category{Order: 1, Identifier: "aa"}
+	bb := &Category{Order: 100, Identifier: "bb"}
 
-	// when
-	categories.InsertCategories(addCategories)
+	categories.InsertCategories(Categories{aa, bb})
 
-	// then
 	assert.Equal(t, 4, len(categories))
 	assert.Equal(t, a, categories[0])
 	assert.Equal(t, b, categories[1])
@@ -81,50 +65,31 @@ func TestCategories_insertCategories(t *testing.T) {
 	assert.Equal(t, bb, categories[3])
 }
 
-func TestCategories_insertCategory(t *testing.T) {
-	t.Run("new title does not exists", func(t *testing.T) {
-		// given
-		a := &Category{Order: 1, Title: "a"}
-		b := &Category{Order: 100, Title: "b"}
+func TestCategories_InsertCategory(t *testing.T) {
+	t.Run("new identifier does not exist — appends category", func(t *testing.T) {
+		a := &Category{Order: 1, Identifier: "a"}
+		b := &Category{Order: 100, Identifier: "b"}
 		categories := Categories{a, b}
-		add := &Category{Order: 50, Title: "c"}
+		add := &Category{Order: 50, Identifier: "c"}
 
-		// when
 		categories.InsertCategory(add)
 
-		// then
 		assert.Equal(t, 3, len(categories))
 		assert.Equal(t, add, categories[2])
 	})
 
-	t.Run("add entries on same title", func(t *testing.T) {
-		// given
-		aEntry := Entry{DisplayName: "a"}
-		aEntries := Entries{aEntry}
-		a := &Category{Order: 1, Title: "a", Entries: aEntries}
-		b := &Category{Order: 100, Title: "b"}
+	t.Run("matching identifier — merges entries instead of appending category", func(t *testing.T) {
+		existingEntry := Entry{Identifier: "existing"}
+		a := &Category{Order: 1, Identifier: "a", Entries: Entries{existingEntry}}
+		b := &Category{Order: 100, Identifier: "b"}
 		categories := Categories{a, b}
-		addEntry := Entry{DisplayName: "add"}
-		addEntries := Entries{addEntry}
-		add := &Category{Order: 50, Title: "a", Entries: addEntries}
+		newEntry := Entry{Identifier: "new"}
+		add := &Category{Order: 50, Identifier: "a", Entries: Entries{newEntry}}
 
-		// when
 		categories.InsertCategory(add)
 
-		// then
 		assert.Equal(t, 2, len(categories))
-		assert.Equal(t, aEntry, categories[0].Entries[0])
-		assert.Equal(t, addEntry, categories[0].Entries[1])
+		assert.Equal(t, existingEntry, categories[0].Entries[0])
+		assert.Equal(t, newEntry, categories[0].Entries[1])
 	})
-}
-
-func TestCategory_String(t *testing.T) {
-	// given
-	a := &Category{Order: 1, Title: "title"}
-
-	// when
-	str := a.String()
-
-	// then
-	assert.Equal(t, "title", str)
 }
