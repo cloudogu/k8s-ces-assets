@@ -1,5 +1,12 @@
 package types
 
+import "sort"
+
+const (
+	// defaultCategoryOrder is set to 9999 so unconfigured categories appear at the end of the menu.
+	defaultCategoryOrder = 9999
+)
+
 // Category groups related entries under a named section in the warp menu.
 type Category struct {
 	// Identifier is the locale-independent key used for deduplication and sorting.
@@ -8,6 +15,18 @@ type Category struct {
 	// Order controls the display position; higher values appear first.
 	Order   int
 	Entries Entries
+}
+
+// CreateCategoryFromIdentifier builds a Category with a default Order (9999)
+// and an initialised but empty DisplayName and Entries. Use this when a
+// category is implied by an entry's tag but has no explicit configuration.
+func CreateCategoryFromIdentifier(identifier string) Category {
+	return Category{
+		Identifier:  identifier,
+		DisplayName: make(TranslationMap),
+		Order:       defaultCategoryOrder,
+		Entries:     make(Entries, 0),
+	}
 }
 
 // Categories is an ordered collection of Category pointers.
@@ -48,4 +67,36 @@ func (c *Categories) InsertCategory(newCategory *Category) {
 		}
 	}
 	*c = append(*c, newCategory)
+}
+
+// InsertEntries merges newEntries into the receiver Categories and returns a
+// new sorted Categories. Each entry carries a category Identifier; if a
+// matching Category exists in c its entries are extended, otherwise a new
+// Category is created via CreateCategoryFromIdentifier. Entries within each
+// Category are sorted by Identifier; Categories are sorted by Order descending.
+func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
+	categoryMap := make(map[string]*Category, c.Len())
+	for _, category := range c {
+		categoryMap[category.Identifier] = category
+	}
+
+	for _, entry := range newEntries {
+		categoryName := entry.Category
+		cat, exists := categoryMap[categoryName]
+		if !exists {
+			cat = new(CreateCategoryFromIdentifier(categoryName))
+			categoryMap[categoryName] = cat
+		}
+		cat.Entries = append(cat.Entries, entry.Entry)
+	}
+
+	result := make(Categories, 0, len(categoryMap))
+	for _, cat := range categoryMap {
+		sort.Sort(cat.Entries)
+		result = append(result, cat)
+	}
+
+	sort.Sort(result)
+
+	return result
 }

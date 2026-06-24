@@ -83,3 +83,23 @@ func TestEntries_Swap(t *testing.T) {
 	assert.Equal(t, entry2, entries[0])
 	assert.Equal(t, entry1, entries[1])
 }
+
+func TestEntriesWithCategory_MapToEntries(t *testing.T) {
+	t.Run("preserves entries and strips category field", func(t *testing.T) {
+		e1 := Entry{Identifier: "docs", Href: "/docs"}
+		e2 := Entry{Identifier: "admin", Href: "/admin"}
+		input := EntriesWithCategory{
+			{Category: "support", Entry: e1},
+			{Category: "apps", Entry: e2},
+		}
+
+		result := input.MapToEntries()
+
+		assert.Equal(t, Entries{e1, e2}, result)
+	})
+
+	t.Run("empty input returns empty Entries", func(t *testing.T) {
+		result := EntriesWithCategory{}.MapToEntries()
+		assert.Empty(t, result)
+	})
+}

@@ -3,6 +3,16 @@ kind: ConfigMap
 metadata:
   name: k8s-ces-warp-config
   labels:
-  {{- include "k8s-ces-assets.labels" . | nindent 4 }}
+    {{- include "k8s-ces-assets.labels" . | nindent 4 }}
 data:
-  warp: {{ .Values.cesWarpConfig.warp | quote }}
+  warp.yaml: |
+    categories:
+      {{- .Values.warp.categories | toYaml | nindent 6 }}
+
+    defaultEntries:
+      {{- range $key, $value := .Values.warp.defaultEntries }}
+        {{- if $value.enabled }}
+      {{ $key }}:
+        {{- $value | toYaml | nindent 8 }}
+        {{- end }}
+      {{- end }}

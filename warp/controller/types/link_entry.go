@@ -4,6 +4,27 @@ import (
 	"fmt"
 )
 
+// EntryWithCategory pairs an Entry with the Identifier of the Category it
+// belongs to. Used when routing CRD-sourced entries to their categories.
+type EntryWithCategory struct {
+	Category string
+	Entry
+}
+
+// EntriesWithCategory is an ordered slice of EntryWithCategory.
+type EntriesWithCategory []EntryWithCategory
+
+// MapToEntries strips the Category field and returns the bare Entries.
+func (e EntriesWithCategory) MapToEntries() Entries {
+	mapped := make(Entries, len(e))
+
+	for i, entry := range e {
+		mapped[i] = entry.Entry
+	}
+
+	return mapped
+}
+
 // Entry represents a single link in the warp menu.
 type Entry struct {
 	Identifier  string

@@ -2,87 +2,204 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"reflect"
 
+	types2 "github.com/cloudogu/warp-assets/controller/types"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 const (
 	WarpConfigMap = "k8s-ces-warp-config"
-	StageLocal    = "local"
-	DevConfigPath = "k8s/dev-resources/k8s-ces-warp-config.yaml"
-	StageEnvVar   = "STAGE"
-	// namespaceEnvVar defines the name of the environment variables given into the service discovery to define the
-	// namespace that should be watched by the service discovery.
+	// namespaceEnvVar is the environment variable that defines the Kubernetes namespace
+	// the controller should watch for WarpMenuEntry resources.
 	namespaceEnvVar      = "WATCH_NAMESPACE"
 	warpPathEnvVar       = "WARP_PATH"
 	deploymentNameEnvVar = "DEPLOYMENT_NAME"
 )
 
-var (
-	logger = ctrl.Log.WithName("k8s-ces-assets.config")
-)
+var logger = ctrl.Log.WithName("k8s-ces-assets.config")
 
-// Order can be used to modify ordering via configuration
-type Order map[string]int
+// DisplayNameDTO maps locale tags (e.g. "de", "en") to their translated strings as
+// read from the warp ConfigMap YAML.
+type DisplayNameDTO map[string]string
 
-// Configuration for warp menu creation
+// CategoryDTO is the YAML representation of a warp menu category.
+type CategoryDTO struct {
+	Order       *int           `yaml:"order,omitempty"`
+	DisplayName DisplayNameDTO `yaml:"displayName"`
+}
+
+// EntryDTO is the YAML representation of a default warp menu entry.
+type EntryDTO struct {
+	Category    string         `yaml:"category"`
+	DisplayName DisplayNameDTO `yaml:"displayName"`
+	Link        string         `yaml:"href"`
+}
+
+// WarpYamlDTO is the top-level structure of the warp.yaml key in the ConfigMap.
+type WarpYamlDTO struct {
+	Categories     map[string]yaml.Node `yaml:"categories"`
+	DefaultEntries map[string]yaml.Node `yaml:"defaultEntries"`
+}
+
+// Configuration holds the parsed warp menu configuration.
 type Configuration struct {
-	Order Order
+	// LogErr captures non-fatal validation errors (e.g. unknown locales) that
+	// should be logged but do not prevent the menu from being built.
+	LogErr            error
+	DefaultCategories types2.Categories
 }
 
-// ReadConfiguration reads the service discovery configuration. Either from file in development mode with environment
-// variable stage=development or from the cluster state
+// ReadConfiguration fetches the warp menu ConfigMap from the cluster and parses it
+// into a Configuration. Non-fatal validation errors (e.g. unknown locales) are
+// returned via Configuration.LogErr rather than as a hard error.
 func ReadConfiguration(ctx context.Context, client client.Client, namespace string) (*Configuration, error) {
-	if os.Getenv(StageEnvVar) == StageLocal {
-		return readWarpConfigFromFile(DevConfigPath)
-	}
-	return readWarpConfigFromCluster(ctx, client, namespace)
-}
+	var validationErrs []error
 
-func readWarpConfigFromFile(path string) (*Configuration, error) {
-	config := &Configuration{}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("could not find configuration at %s", path)
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read configuration %s: %w", path, err)
-	}
-
-	err = yaml.Unmarshal(data, config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal configuration %s: %w", path, err)
-	}
-
-	return config, nil
-}
-
-func readWarpConfigFromCluster(ctx context.Context, client client.Client, namespace string) (*Configuration, error) {
 	configmap := &corev1.ConfigMap{}
 	objectKey := types.NamespacedName{
 		Namespace: namespace,
 		Name:      WarpConfigMap,
 	}
-	err := client.Get(ctx, objectKey, configmap)
-	if err != nil {
+
+	if err := client.Get(ctx, objectKey, configmap); err != nil {
 		return nil, fmt.Errorf("failed to get warp menu configmap: %w", err)
 	}
 
-	data := configmap.Data["warp"]
-	conf := &Configuration{}
-	err = yaml.Unmarshal([]byte(data), conf)
-	if err != nil {
+	data := configmap.Data["warp.yaml"]
+	var yamlData WarpYamlDTO
+
+	if err := yaml.Unmarshal([]byte(data), &yamlData); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal yaml from warp config: %w", err)
 	}
 
-	return conf, nil
+	defaultCategories, err := mapYamlConfigToDefaultCategories(yamlData.Categories)
+	if err != nil {
+		validationErrs = append(validationErrs, err)
+	}
+
+	defaultEntries, err := mapYamlConfigToDefaultEntries(yamlData.DefaultEntries)
+	if err != nil {
+		validationErrs = append(validationErrs, err)
+	}
+
+	return &Configuration{
+		LogErr:            errors.Join(validationErrs...),
+		DefaultCategories: defaultCategories.InsertEntries(defaultEntries),
+	}, nil
+}
+
+func mapYamlConfigToDefaultEntries(entries map[string]yaml.Node) (types2.EntriesWithCategory, error) {
+	var mappingErrs []error
+	var defaultEntries types2.EntriesWithCategory
+
+	if len(entries) == 0 {
+		logger.Info("Default entries in warp menu config not defined, skipping them.")
+		return defaultEntries, nil
+	}
+
+	for entryName, entryNode := range entries {
+		var eDTO EntryDTO
+		if err := entryNode.Decode(&eDTO); err != nil {
+			mappingErrs = append(mappingErrs, fmt.Errorf("failed to decode entry %s: %w", entryName, err))
+			continue
+		}
+
+		entryURL, err := url.Parse(eDTO.Link)
+		if err != nil {
+			mappingErrs = append(mappingErrs, fmt.Errorf("invalid link in entry %s: %w", entryName, err))
+			continue
+		}
+
+		defaultEntry := types2.EntryWithCategory{
+			Category: eDTO.Category,
+			Entry: types2.Entry{
+				Identifier:  entryName,
+				DisplayName: make(types2.TranslationMap),
+				Href:        eDTO.Link,
+				Target:      types2.TARGET_SELF,
+			},
+		}
+
+		if entryURL.IsAbs() {
+			defaultEntry.Target = types2.TARGET_EXTERNAL
+		}
+
+		var localeErrs []error
+		defaultEntry.DisplayName, localeErrs = mapToTranslationMap(eDTO.DisplayName, entryName, "entry")
+		if len(localeErrs) > 0 {
+			mappingErrs = append(mappingErrs, localeErrs...)
+		}
+
+		defaultEntries = append(defaultEntries, defaultEntry)
+	}
+
+	return defaultEntries, errors.Join(mappingErrs...)
+}
+
+func mapYamlConfigToDefaultCategories(categories map[string]yaml.Node) (types2.Categories, error) {
+	var mappingErrs []error
+	var defaultCategories types2.Categories
+
+	if len(categories) == 0 {
+		logger.Info("Default Categories in warp menu config not defined, skipping them.")
+		return defaultCategories, nil
+	}
+
+	for categoryName, categoryNode := range categories {
+		var cDTO CategoryDTO
+		if err := categoryNode.Decode(&cDTO); err != nil {
+			mappingErrs = append(mappingErrs, fmt.Errorf("failed to decode category %s: %w", categoryName, err))
+			continue
+		}
+
+		defaultCategory := types2.CreateCategoryFromIdentifier(categoryName)
+
+		if cDTO.Order != nil {
+			defaultCategory.Order = *cDTO.Order
+		}
+
+		var localeErrs []error
+		defaultCategory.DisplayName, localeErrs = mapToTranslationMap(cDTO.DisplayName, categoryName, "category")
+		if len(localeErrs) > 0 {
+			mappingErrs = append(mappingErrs, localeErrs...)
+		}
+
+		defaultCategories = append(defaultCategories, &defaultCategory)
+	}
+
+	return defaultCategories, errors.Join(mappingErrs...)
+}
+
+func mapToTranslationMap(displayName DisplayNameDTO, identifier string, contextName string) (types2.TranslationMap, []error) {
+	var errs []error
+	translationMap := make(types2.TranslationMap)
+
+	for localeString, translation := range displayName {
+		locale := types2.LocaleFromString(localeString)
+		if locale == types2.LocaleUnknown {
+			errs = append(errs, fmt.Errorf("unknown locale %s in %s %s", localeString, contextName, identifier))
+			continue
+		}
+		translationMap[locale] = translation
+	}
+
+	// Fall back to the identifier when no valid translations were provided.
+	if len(translationMap) == 0 {
+		return types2.TranslationMapFromIdentifier(identifier), errs
+	}
+
+	return translationMap, errs
 }
 
 func getEnvlookup(env, errormessage, logMessage string) (string, error) {
@@ -95,20 +212,64 @@ func getEnvlookup(env, errormessage, logMessage string) (string, error) {
 	return envValue, nil
 }
 
+// ReadWatchNamespace returns the namespace the controller should watch, read from
+// the WATCH_NAMESPACE environment variable.
 func ReadWatchNamespace() (string, error) {
 	return getEnvlookup(namespaceEnvVar,
 		"failed to read namespace to watch from environment variable [%s], please set the variable and try again",
 		"found target namespace: [%s]")
 }
 
+// ReadWarpPath returns the filesystem path for warp menu output, read from the
+// WARP_PATH environment variable.
 func ReadWarpPath() (string, error) {
 	return getEnvlookup(warpPathEnvVar,
 		"failed to read warp path to watch from environment variable [%s], please set the variable and try again",
 		"found target warp path: [%s]")
 }
 
+// ReadDeploymentName returns the name of the controller deployment, read from the
+// DEPLOYMENT_NAME environment variable.
 func ReadDeploymentName() (string, error) {
 	return getEnvlookup(deploymentNameEnvVar,
 		"failed to read deployment name from environment variable [%s], please set the variable and try again",
-		"found target depolyment name: [%s]")
+		"found target deployment name: [%s]")
+}
+
+func WarpConfigMapPredicate() predicate.Predicate {
+	return predicate.And(
+		isWarpConfigMapPredicate(),
+		warpConfigMapHasChangedPredicate(),
+	)
+}
+
+func isWarpConfigMapPredicate() predicate.Predicate {
+	return predicate.NewPredicateFuncs(func(object client.Object) bool {
+		return object.GetName() == WarpConfigMap
+	})
+}
+
+func warpConfigMapHasChangedPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldCM, okOld := e.ObjectOld.(*corev1.ConfigMap)
+			newCM, okNew := e.ObjectNew.(*corev1.ConfigMap)
+
+			if !okOld || !okNew {
+				return false
+			}
+
+			return !reflect.DeepEqual(oldCM.Data, newCM.Data) ||
+				!reflect.DeepEqual(oldCM.BinaryData, newCM.BinaryData)
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return true
+		},
+	}
 }

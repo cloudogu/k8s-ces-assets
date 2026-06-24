@@ -1,10 +1,75 @@
 global:
   imagePullSecrets:
     - name: "ces-container-registries"
-cesWarpConfig:
-  warp: |
-    order:
-      Development Apps: 100
+
+warp:
+  categories:
+    Development Apps:
+      order: 100
+      displayName:
+        de: "Anwendungen"
+        en: "Applications"
+
+    Administration Apps:
+      order: 200
+      displayName:
+        de: "Administration"
+        en: "Administration Apps"
+
+    Documentation:
+      order: 300
+      displayName:
+        de: "Dokumentation"
+        en: "Documentation"
+
+    Support:
+      order: 400
+      displayName:
+        de: "Support"
+        en: "Support"
+
+    # This is a test entry!!!
+    Test:
+      order: 401
+      displayName:
+        de: "TestKategorie"
+        en: "TestCategory"
+
+  defaultEntries:
+    docsCloudoguComUrl:
+      enabled: true
+      category: "Support"
+      displayName:
+        de: "Cloudogu EcoSystem Dokumentation"
+        en: "Cloudogu EcoSystem documentation"
+      href: "https://docs.cloudogu.com"
+
+    aboutCloudoguToken:
+      enabled: true
+      category: "Support"
+      displayName:
+        de: "Über Cloudogu"
+        en: "About Cloudogu"
+      href: "/info/about"
+
+    platform:
+      enabled: true
+      category: "Support"
+      displayName:
+        de: "cloudogu platform"
+        en: "cloudogu platform"
+      href: "https://platform.cloudogu.com"
+
+    #Test Entry
+    google:
+      enabled: true
+      category: "SearchEngine"
+      displayName:
+        de: "Google Suche"
+        en: "Google Search"
+      href: "https://google.com"
+
+
 ingress:
   className: "k8s-ecosystem-ces-service"
   host: ""
