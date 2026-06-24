@@ -2,25 +2,26 @@ package types
 
 import "github.com/pkg/errors"
 
-// Entry link in the warp menu
+// Entry represents a single link in the warp menu.
 type Entry struct {
-	Identifier   string
-	DisplayName  string
-	Href         string
-	Target       Target
-	Localization map[string]string
+	Identifier  string
+	DisplayName TranslationMap
+	Href        string
+	Target      Target
 }
 
-// Target defines the target of the link
+// Target defines where a link opens.
 type Target uint8
 
 const (
-	// TARGET_SELF means the link is part of the internal system
+	// TARGET_SELF opens the link within the current system (internal navigation).
 	TARGET_SELF Target = iota + 1
-	// TARGET_EXTERNAL link is outside from the system
+	// TARGET_EXTERNAL opens the link outside the system (external browser tab).
 	TARGET_EXTERNAL
 )
 
+// MarshalJSON serialises Target as a JSON string ("self" or "external").
+// Returns an error for unrecognised values so broken data surfaces early.
 func (target Target) MarshalJSON() ([]byte, error) {
 	switch target {
 	case TARGET_SELF:
@@ -28,7 +29,7 @@ func (target Target) MarshalJSON() ([]byte, error) {
 	case TARGET_EXTERNAL:
 		return target.asJSONString("external"), nil
 	default:
-		return nil, errors.Errorf("unknow target type %d", target)
+		return nil, errors.Errorf("unknown target type %d", target)
 	}
 }
 
@@ -36,17 +37,20 @@ func (target Target) asJSONString(value string) []byte {
 	return []byte("\"" + value + "\"")
 }
 
-// Entries is a collection of warp entries
+// Entries is an ordered collection of warp menu entries.
 type Entries []Entry
 
+// Len implements sort.Interface.
 func (e Entries) Len() int {
 	return len(e)
 }
 
+// Less implements sort.Interface. Entries are sorted by Identifier ascending.
 func (e Entries) Less(i, j int) bool {
 	return e[i].Identifier < e[j].Identifier
 }
 
+// Swap implements sort.Interface.
 func (e Entries) Swap(i, j int) {
 	e[i], e[j] = e[j], e[i]
 }

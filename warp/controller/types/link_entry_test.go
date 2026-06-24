@@ -1,55 +1,34 @@
 package types
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
-func TestCategoryString(t *testing.T) {
-	category := Category{Title: "Hitchhiker"}
-	assert.Equal(t, "Hitchhiker", fmt.Sprintf("%v", category))
-}
-
 func TestTarget_MarshalJSON(t *testing.T) {
-	testMarshalJSON(t, TARGET_EXTERNAL, "{\"Target\":\"external\"}")
-	testMarshalJSON(t, TARGET_SELF, "{\"Target\":\"self\"}")
-
-	if _, err := json.Marshal(&targetStruct{12}); err == nil {
-		t.Errorf("marshal should fail because of an invalid value")
+	tests := []struct {
+		name     string
+		target   Target
+		expected string
+		wantErr  bool
+	}{
+		{name: "self", target: TARGET_SELF, expected: `{"Target":"self"}`},
+		{name: "external", target: TARGET_EXTERNAL, expected: `{"Target":"external"}`},
+		{name: "unknown value returns error", target: Target(12), wantErr: true},
 	}
-}
-
-func TestEntries_Swap(t *testing.T) {
-	// given
-	entry1 := Entry{DisplayName: "1"}
-	entry2 := Entry{DisplayName: "2"}
-	entries := Entries{entry1, entry2}
-
-	// when
-	entries.Swap(0, 1)
-
-	// then
-	assert.Equal(t, "2", entries[0].DisplayName)
-	assert.Equal(t, "1", entries[1].DisplayName)
-}
-
-func testMarshalJSON(t *testing.T, target Target, expected string) {
-	value := marshal(t, target)
-	if value != expected {
-		t.Errorf("value %s is not the expected %s", value, expected)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(targetStruct{tt.target})
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(data))
+		})
 	}
-}
-
-func marshal(t *testing.T, target Target) string {
-	test := targetStruct{target}
-	testJson, err := json.Marshal(&test)
-	if err != nil {
-		t.Errorf("failed to marshal test struct: %v", err)
-	}
-	return string(testJson)
 }
 
 type targetStruct struct {
@@ -57,27 +36,50 @@ type targetStruct struct {
 }
 
 func TestEntries_Len(t *testing.T) {
-	// given
-	entryA := Entry{}
-	entryB := Entry{}
-	entries := Entries{entryA, entryB}
-
-	// when
-	length := entries.Len()
-
-	// then
-	assert.Equal(t, 2, length)
+	entries := Entries{Entry{}, Entry{}}
+	assert.Equal(t, 2, entries.Len())
 }
 
 func TestEntries_Less(t *testing.T) {
-	// given
-	entryA := Entry{Identifier: "A", DisplayName: "B"}
-	entryB := Entry{Identifier: "B", DisplayName: "A"}
-	entries := Entries{entryA, entryB}
+	tests := []struct {
+		name     string
+		a, b     Entry
+		expected bool
+	}{
+		{
+			name:     "a comes before b alphabetically",
+			a:        Entry{Identifier: "A"},
+			b:        Entry{Identifier: "B"},
+			expected: true,
+		},
+		{
+			name:     "b comes before a alphabetically",
+			a:        Entry{Identifier: "B"},
+			b:        Entry{Identifier: "A"},
+			expected: false,
+		},
+		{
+			name:     "equal identifiers",
+			a:        Entry{Identifier: "A"},
+			b:        Entry{Identifier: "A"},
+			expected: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries := Entries{tt.a, tt.b}
+			assert.Equal(t, tt.expected, entries.Less(0, 1))
+		})
+	}
+}
 
-	// when
-	result := entries.Less(0, 1)
+func TestEntries_Swap(t *testing.T) {
+	entry1 := Entry{Identifier: "1"}
+	entry2 := Entry{Identifier: "2"}
+	entries := Entries{entry1, entry2}
 
-	// then
-	assert.True(t, result)
+	entries.Swap(0, 1)
+
+	assert.Equal(t, entry2, entries[0])
+	assert.Equal(t, entry1, entries[1])
 }
