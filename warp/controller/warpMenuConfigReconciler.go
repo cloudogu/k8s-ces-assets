@@ -3,20 +3,20 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
-	"time"
 
+	component "github.com/cloudogu/k8s-component-lib/api/v1"
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
-	"github.com/cloudogu/warp-assets/controller/types"
-	"github.com/go-logr/logr"
-	appsv1 "k8s.io/api/apps/v1"
+	domain "github.com/cloudogu/warp-assets/controller/types"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
-	types2 "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -28,90 +28,78 @@ import (
 )
 
 const (
-	warpMenuUpdateEventReason        = "WarpMenu"
-	errorOnWarpMenuUpdateEventReason = "ErrUpdateWarpMenu"
-	warpMenuUpdateEventAction        = "WarpMenuEntryReconcile"
-	reasonMenuGenerationFailed       = "MenuGenerationFailed"
-	reasonMenuGenerated              = "MenuGenerated"
+	actionReconcile = "ReconcileWarpMenu"
+
+	reasonFailedReadConfig        = "FailedReadConfig"
+	reasonInvalidConfig           = "InvalidConfig"
+	reasonFailedGetEntry          = "FailedGetEntry"
+	reasonFailedListEntries       = "FailedListEntries"
+	reasonInvalidEntry            = "InvalidEntry"
+	reasonFailedWriteMenu         = "FailedWriteMenu"
+	reasonFailedUpdateStatusEntry = "FailedUpdateStatusWarpCR"
+	reasonMenuGenerationFailed    = "MenuGenerationFailed"
+	reasonMenuUpdated             = "WarpMenuUpdated"
 )
 
 type WarpMenuConfigReconciler struct {
 	client         client.Client
 	eventRecorder  events.EventRecorder
+	componentCRKey types.NamespacedName
 	warpMenuPath   string
-	deploymentName string
 }
 
-func NewWarpMenuReconciler(client client.Client, eventRecoder events.EventRecorder, warpMenuPath string, deploymentName string) *WarpMenuConfigReconciler {
+func NewWarpMenuReconciler(client client.Client, eventRecoder events.EventRecorder, warpMenuPath string, componentCRKey types.NamespacedName) *WarpMenuConfigReconciler {
 	return &WarpMenuConfigReconciler{
 		client:         client,
 		eventRecorder:  eventRecoder,
 		warpMenuPath:   warpMenuPath,
-		deploymentName: deploymentName,
+		componentCRKey: componentCRKey,
 	}
 }
 
-func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, rErr error) {
 	logger := log.FromContext(ctx)
-	logger.Info(fmt.Sprintf("Starting WarpMenuConfigReconciler reconcile for %s in namespace %s ..", req.Name, req.Namespace))
+	logger.Info(fmt.Sprintf("Starting WarpMenuConfigReconciler reconcile for %s in namespace %s ...", req.Name, req.Namespace))
 
-	entry, err := r.loadEntryToReconcile(ctx, req, logger)
-	if err != nil {
-		return ctrl.Result{}, r.handleError(ctx, err, nil, nil, "warp update: failed to get entry [%s] to be reconciled", req.Name)
-	}
-
-	deployment := &appsv1.Deployment{}
-	err = r.client.Get(ctx, types2.NamespacedName{Name: r.deploymentName, Namespace: req.Namespace}, deployment)
-	if err != nil {
-		return ctrl.Result{}, r.handleError(ctx, err, entry, nil, "warp update: failed to get deployment [%s]", r.deploymentName)
-	}
+	defer func() {
+		rErr = r.updateWarpCRStatus(ctx, req, rErr)
+	}()
 
 	warpMenuConfiguration, err := config.ReadConfiguration(ctx, r.client, req.Namespace)
 	if err != nil {
-		return ctrl.Result{}, r.handleError(ctx, err, entry, deployment, "Reading warp menu config failed")
+		return ctrl.Result{}, r.handleOperatorError(ctx, reasonFailedReadConfig, "failed to read warp configuration", err)
 	}
 
-	warpMenuEntries := &warpmenu.WarpMenuEntryList{}
-	err = r.client.List(ctx, warpMenuEntries, client.InNamespace(req.Namespace))
+	if warpMenuConfiguration.LogErr != nil {
+		logger.Error(
+			r.handleOperatorError(ctx, reasonInvalidConfig, "warp config contains invalid entries", warpMenuConfiguration.LogErr),
+			"invalid warp menu configuration",
+		)
+	}
+
+	warpCrEntries := &warpmenu.WarpMenuEntryList{}
+	err = r.client.List(ctx, warpCrEntries, client.InNamespace(req.Namespace))
 	if err != nil {
-		return ctrl.Result{}, r.handleError(ctx, err, entry, deployment, "Reading warp menu entry CRs failed")
+		return ctrl.Result{}, r.handleOperatorError(ctx, reasonFailedListEntries, "failed to list warp menu entry CRs", err)
 	}
 
-	categories := r.createCategories(warpMenuConfiguration, warpMenuEntries)
-
-	err = r.writeWarpMenuFile(categories)
-	if err != nil {
-		return ctrl.Result{}, r.handleError(ctx, err, entry, deployment, "Writing warp menu file failed")
+	warpMenuEntries, mErr := r.mapWarpMenuCRItemsToEntriesWithCategory(warpCrEntries.Items)
+	if mErr != nil {
+		r.emitGlobalWarning(ctx, reasonInvalidEntry, "one or more warpCRs are invalid")
+		logger.Info("one or more warpCRs are invalid: skipping them for warp menu", "error", mErr)
 	}
 
-	err = r.updateWarpMenuEntryStatus(ctx, entry, deployment)
-	if err != nil {
-		logger.Error(err, "error while reconciling")
-		return ctrl.Result{}, fmt.Errorf("update status of %s: %w", req.Name, err)
+	defaultCategories := warpMenuConfiguration.DefaultCategories
+	categories := defaultCategories.InsertEntries(warpMenuEntries)
+
+	if wErr := r.writeWarpMenuFile(categories); wErr != nil {
+		return ctrl.Result{}, r.handleOperatorError(ctx, reasonFailedWriteMenu, "failed to write warp menu file", wErr)
 	}
 
-	if entry == nil {
-		r.eventRecorder.Eventf(deployment, nil, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
+	r.emitGlobalNormal(ctx, reasonMenuUpdated, "warp menu entries have been updated.")
+	logger.Info("Successfully updated warp menu.")
 
-	} else {
-		r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeNormal, warpMenuUpdateEventReason, warpMenuUpdateEventAction, "Warp menu updated.")
-
-	}
-	logger.Info("WarpMenuConfigReconciler Reconcile was successful")
 	return ctrl.Result{}, nil
-}
-
-func (r *WarpMenuConfigReconciler) loadEntryToReconcile(ctx context.Context, req ctrl.Request, logger logr.Logger) (*warpmenu.WarpMenuEntry, error) {
-	entry := &warpmenu.WarpMenuEntry{}
-	err := r.client.Get(ctx, req.NamespacedName, entry)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("Entry CR to be reconciled not found - probably deleted?", "name", req.Name)
-			return nil, nil
-		}
-		return nil, err
-	}
-	return entry, nil
 }
 
 func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
@@ -119,19 +107,13 @@ func (r *WarpMenuConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&warpmenu.WarpMenuEntry{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(
 			&corev1.ConfigMap{},
-			handler.EnqueueRequestsFromMapFunc(r.triggerDummyReconcile),
-			builder.WithPredicates(predicate.NewPredicateFuncs(func(object client.Object) bool {
-				return object.GetName() == config.WarpConfigMap
-			})),
+			handler.EnqueueRequestsFromMapFunc(warpConfigChangeReconcile),
+			builder.WithPredicates(config.WarpConfigMapPredicate()),
 		).
 		Complete(r)
 }
 
-func (r *WarpMenuConfigReconciler) createCategories(configuration *config.Configuration, menuEntries *warpmenu.WarpMenuEntryList) types.Categories {
-	return WarpMenuBuilder{order: configuration.Order}.buildCategories(menuEntries)
-}
-
-func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories) error {
+func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories domain.Categories) error {
 	jsonData, err := json.Marshal(categories)
 	if err != nil {
 		return fmt.Errorf("failed to marshal warp data: %w", err)
@@ -154,45 +136,97 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories types.Categories
 	return nil
 }
 
-func (r *WarpMenuConfigReconciler) handleError(ctx context.Context, err error, entry *warpmenu.WarpMenuEntry, deployment *appsv1.Deployment, message string, a ...any) error {
-	errorMessage := fmt.Sprintf(message, a...)
-	if deployment != nil {
-		r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, errorMessage+": %v", err)
+func (r *WarpMenuConfigReconciler) updateWarpCRStatus(ctx context.Context, reconcileReq ctrl.Request, reconcileErr error) (uErr error) {
+	// Reconcile hasn't been triggered by a warp cr
+	if reconcileReq.Name == config.WarpConfigMap {
+		return reconcileErr
 	}
-	if entry != nil {
-		condition := r.createErrorStatusCondition(entry.Generation, errorMessage)
-		statusError := r.updateStatusCondition(ctx, entry, condition, deployment)
-		if statusError != nil {
-			log.FromContext(ctx).Error(statusError, "error occurred while updating the error status condition for the entry : %v", entry)
-		}
-	}
-	return fmt.Errorf(errorMessage+": %w", err)
-}
 
-func (r *WarpMenuConfigReconciler) updateWarpMenuEntryStatus(ctx context.Context, entry *warpmenu.WarpMenuEntry, deployment *appsv1.Deployment) error {
-	if entry != nil {
-		err := r.updateStatusCondition(ctx, entry, r.createVisibleStatusCondition(entry.Spec.Disabled, entry.Generation), deployment)
-		if err != nil {
-			return err
+	defer func() {
+		if reconcileErr != nil {
+			// always prefer error from reconciler
+			uErr = reconcileErr
 		}
-		return r.updateStatusCondition(ctx, entry, r.createSuccessfulStatusCondition(entry.Generation), deployment)
+	}()
+
+	entry := &warpmenu.WarpMenuEntry{}
+	err := r.client.Get(ctx, reconcileReq.NamespacedName, entry)
+	// nothing to do, as CR does not exist
+	if apierrors.IsNotFound(err) {
+		return nil
 	}
+
+	if err != nil {
+		return r.handleOperatorError(ctx, reasonFailedGetEntry, fmt.Sprintf("failed to get warp entry %q for status update", reconcileReq.Name), err)
+	}
+
+	wrapUpdateStatusError := func(statusErr error) error {
+		return r.handleOperatorError(ctx, reasonFailedUpdateStatusEntry, fmt.Sprintf("failed to update status conditions for entry %q", entry.Name), statusErr)
+	}
+
+	if reconcileErr != nil {
+		condition := r.createErrorStatusCondition(entry.Generation, "an internal operator error occurred")
+		if statusError := r.updateStatusCondition(ctx, entry, condition); statusError != nil {
+			return wrapUpdateStatusError(statusError)
+		}
+	}
+
+	_, mErr := mapWarpCRToEntryWithCategory(*entry)
+	if mErr != nil {
+		// warp cr is invalid and is skipped by the operator
+		r.eventRecorder.Eventf(entry, nil, corev1.EventTypeWarning, reasonInvalidEntry, actionReconcile,
+			"warp cr is invalid: %v", mErr)
+
+		visibleCondition := v1.Condition{
+			Type:               warpmenu.ConditionVisible,
+			Status:             v1.ConditionFalse,
+			ObservedGeneration: entry.Generation,
+			Reason:             reasonInvalidEntry,
+			Message:            "Warp menu entry is not rendered, because it is invalid.",
+		}
+
+		readyCondition := v1.Condition{
+			Type:               warpmenu.ConditionReady,
+			Status:             v1.ConditionFalse,
+			ObservedGeneration: entry.Generation,
+			Reason:             reasonInvalidEntry,
+			Message:            "Warp menu entry is not ready, because of invalid entries",
+		}
+
+		if statusError := r.updateStatusCondition(ctx, entry, visibleCondition, readyCondition); statusError != nil {
+			return wrapUpdateStatusError(statusError)
+		}
+	}
+
+	visibleCondition := r.createVisibleStatusCondition(entry.Spec.Disabled, entry.Generation)
+	readyCondition := r.createSuccessfulStatusCondition(entry.Generation)
+
+	if statusError := r.updateStatusCondition(ctx, entry, visibleCondition, readyCondition); statusError != nil {
+		return wrapUpdateStatusError(statusError)
+	}
+
 	return nil
 }
 
-func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, entry *warpmenu.WarpMenuEntry, condition v1.Condition, deployment *appsv1.Deployment) error {
-	if !meta.SetStatusCondition(&entry.Status.Conditions, condition) {
-		// nothing changed, so there is nothing to update
-		return nil
-	}
-	err := r.client.Status().Update(ctx, entry)
-	if err != nil {
-		log.FromContext(ctx).Error(err, "updating warp menu entry status failed", "name", entry.Name)
-		if deployment != nil {
-			r.eventRecorder.Eventf(deployment, entry, corev1.EventTypeWarning, errorOnWarpMenuUpdateEventReason, warpMenuUpdateEventAction, "Updating warp menu entry status for %s failed: %v", entry.Name, err)
+func (r *WarpMenuConfigReconciler) updateStatusCondition(ctx context.Context, entry *warpmenu.WarpMenuEntry, conditions ...v1.Condition) error {
+	anyConditionChanged := false
+
+	for _, condition := range conditions {
+		if meta.SetStatusCondition(&entry.Status.Conditions, condition) {
+			// If at least one condition actually changed, flip flag
+			anyConditionChanged = true
 		}
 	}
-	return err
+
+	if !anyConditionChanged {
+		return nil
+	}
+
+	if err := r.client.Status().Update(ctx, entry); err != nil {
+		return fmt.Errorf("failed to update status: %w", err)
+	}
+
+	return nil
 }
 
 func (r *WarpMenuConfigReconciler) createSuccessfulStatusCondition(generation int64) v1.Condition {
@@ -200,7 +234,7 @@ func (r *WarpMenuConfigReconciler) createSuccessfulStatusCondition(generation in
 		Type:               warpmenu.ConditionReady,
 		Status:             v1.ConditionTrue,
 		ObservedGeneration: generation,
-		Reason:             reasonMenuGenerated,
+		Reason:             reasonMenuUpdated,
 		Message:            "Warp menu entry has successfully been synced",
 	}
 }
@@ -227,7 +261,6 @@ func (r *WarpMenuConfigReconciler) createErrorStatusCondition(generation int64, 
 	condition := v1.Condition{
 		Type:               warpmenu.ConditionReady,
 		ObservedGeneration: generation,
-		LastTransitionTime: v1.NewTime(time.Now()),
 		Status:             v1.ConditionFalse,
 		Reason:             reasonMenuGenerationFailed,
 		Message:            errorMessage,
@@ -235,15 +268,108 @@ func (r *WarpMenuConfigReconciler) createErrorStatusCondition(generation int64, 
 	return condition
 }
 
-func (r *WarpMenuConfigReconciler) triggerDummyReconcile(ctx context.Context, obj client.Object) []reconcile.Request {
+func warpConfigChangeReconcile(ctx context.Context, obj client.Object) []reconcile.Request {
 	log.FromContext(ctx).Info(fmt.Sprintf("warp config changed - creating a reconcile request to recreate all warp entries:  Object triggering the reconcile: [Namespace: %s ,Name: %s]  %v", obj.GetNamespace(), obj.GetName(), ctx))
 
 	// We don't have to list all entries and reconcile them because one reconciliation recreates the complete warp menu.
 	// If a resource is not found, the reconciler recreates the warp menu, too.
 	reconcileRequests := []reconcile.Request{{
-		NamespacedName: types2.NamespacedName{
+		NamespacedName: types.NamespacedName{
 			Name:      config.WarpConfigMap,
 			Namespace: obj.GetNamespace(),
 		}}}
 	return reconcileRequests
+}
+
+func (r *WarpMenuConfigReconciler) mapWarpMenuCRItemsToEntriesWithCategory(warpCREntries []warpmenu.WarpMenuEntry) (domain.EntriesWithCategory, error) {
+	domainEntries := make(domain.EntriesWithCategory, 0, len(warpCREntries))
+
+	var mErrs []error
+	for _, warpCR := range warpCREntries {
+		if warpCR.Spec.Disabled {
+			continue
+		}
+
+		domainEntry, mErr := mapWarpCRToEntryWithCategory(warpCR)
+		if mErr != nil {
+			r.eventRecorder.Eventf(&warpCR, nil, corev1.EventTypeWarning, reasonInvalidEntry, actionReconcile, "Failed to validate due to: %v", mErr)
+			mErrs = append(mErrs, fmt.Errorf("failed to map warp entry %q: %w", warpCR.GetName(), mErr))
+
+			continue
+		}
+
+		domainEntries = append(domainEntries, domainEntry)
+	}
+
+	return domainEntries, errors.Join(mErrs...)
+}
+
+func mapWarpCRToEntryWithCategory(crEntry warpmenu.WarpMenuEntry) (domain.EntryWithCategory, error) {
+	var vErrs []error
+
+	if len(crEntry.Spec.Category) == 0 {
+		vErrs = append(vErrs, fmt.Errorf("category is empty"))
+	}
+
+	pathStr := crEntry.Spec.Path
+	if vErr := validatePath(pathStr); vErr != nil {
+		vErrs = append(vErrs, fmt.Errorf("invalid path %q: %w", pathStr, vErr))
+	}
+
+	if len(vErrs) > 0 {
+		return domain.EntryWithCategory{}, errors.Join(vErrs...)
+	}
+
+	return domain.EntryWithCategory{
+		Category: crEntry.Spec.Category,
+		Entry: domain.Entry{
+			Identifier: crEntry.GetName(),
+			DisplayName: domain.TranslationMap{
+				domain.LocaleDe: crEntry.Spec.DisplayName.DE,
+				domain.LocaleEn: crEntry.Spec.DisplayName.EN,
+			},
+			Href:   pathStr,
+			Target: domain.TARGET_SELF,
+		},
+	}, nil
+}
+
+func validatePath(pathStr string) error {
+	if len(pathStr) < 2 {
+		return fmt.Errorf("must have a length of at least 2")
+	}
+
+	pathURL, err := url.Parse(pathStr)
+	if err != nil {
+		return fmt.Errorf("unable to parse path to url: %w", err)
+	}
+
+	if !pathURL.IsAbs() {
+		return fmt.Errorf("path needs to be relative")
+	}
+
+	return nil
+}
+
+// emitGlobalWarning fires a warning on the Component CR anchor.
+func (r *WarpMenuConfigReconciler) emitGlobalWarning(ctx context.Context, reason, msg string) {
+	comp := &component.Component{}
+	if err := r.client.Get(ctx, r.componentCRKey, comp); err != nil {
+		return
+	}
+	r.eventRecorder.Eventf(comp, nil, corev1.EventTypeWarning, reason, actionReconcile, msg)
+}
+
+// emitGlobalNormal fires a normal event on the Component CR anchor.
+func (r *WarpMenuConfigReconciler) emitGlobalNormal(ctx context.Context, reason, msg string) {
+	comp := &component.Component{}
+	if err := r.client.Get(ctx, r.componentCRKey, comp); err != nil {
+		return
+	}
+	r.eventRecorder.Eventf(comp, nil, corev1.EventTypeNormal, reason, actionReconcile, msg)
+}
+
+func (r *WarpMenuConfigReconciler) handleOperatorError(ctx context.Context, reason, msg string, err error) error {
+	r.emitGlobalWarning(ctx, reason, msg)
+	return fmt.Errorf("%s: %w", msg, err)
 }
