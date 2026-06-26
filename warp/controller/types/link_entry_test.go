@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
@@ -102,4 +103,64 @@ func TestEntriesWithCategory_MapToEntries(t *testing.T) {
 		result := EntriesWithCategory{}.MapToEntries()
 		assert.Empty(t, result)
 	})
+}
+
+func TestEntry_MarshalJSON(t *testing.T) {
+	type jsonEntry struct {
+		Title        string            `json:"Title"`
+		DisplayName  string            `json:"DisplayName"`
+		Href         string            `json:"Href"`
+		Target       string            `json:"Target"`
+		Translations map[string]string `json:"Translations"`
+	}
+
+	tests := []struct {
+		name     string
+		input    Entry
+		expected jsonEntry
+	}{
+		{
+			name: "full entry with both locales",
+			input: Entry{
+				Identifier:  "nexus",
+				DisplayName: TranslationMap{LocaleDe: "Nexus", LocaleEn: "Nexus"},
+				Href:        "/nexus",
+				Target:      TARGET_EXTERNAL,
+			},
+			expected: jsonEntry{
+				Title:        "nexus",
+				DisplayName:  "Nexus",
+				Href:         "/nexus",
+				Target:       "external",
+				Translations: map[string]string{"de": "Nexus", "en": "Nexus"},
+			},
+		},
+		{
+			name: "entry without german translation yields empty DisplayName",
+			input: Entry{
+				Identifier:  "tool",
+				DisplayName: TranslationMap{LocaleEn: "Tool"},
+				Href:        "/tool",
+				Target:      TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "tool",
+				DisplayName:  "",
+				Href:         "/tool",
+				Target:       "self",
+				Translations: map[string]string{"en": "Tool"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.input)
+			require.NoError(t, err)
+
+			var got jsonEntry
+			require.NoError(t, json.Unmarshal(data, &got))
+			assert.Equal(t, tt.expected, got)
+		})
+	}
 }

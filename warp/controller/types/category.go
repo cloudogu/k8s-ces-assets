@@ -1,6 +1,9 @@
 package types
 
-import "sort"
+import (
+	"encoding/json"
+	"sort"
+)
 
 const (
 	// defaultCategoryOrder is set to 9999 so unconfigured categories appear at the end of the menu.
@@ -10,10 +13,12 @@ const (
 // Category groups related entries under a named section in the warp menu.
 type Category struct {
 	// Identifier is the locale-independent key used for deduplication and sorting.
-	Identifier  string
+	Identifier string
+	// DisplayName holds the translated category name for each supported locale.
 	DisplayName TranslationMap
 	// Order controls the display position; higher values appear first.
-	Order   int
+	Order int
+	// Entries is the ordered list of links belonging to this category.
 	Entries Entries
 }
 
@@ -99,4 +104,21 @@ func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
 	sort.Sort(result)
 
 	return result
+}
+
+// MarshalJSON serialises Category using its API-facing JSON shape: Title maps
+// to Identifier and Translations to DisplayName, avoiding exposure of internal
+// field names in the JSON output.
+func (c Category) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Title        string         `json:"Title"`
+		Order        int            `json:"Order"`
+		Translations TranslationMap `json:"Translations"`
+		Entries      Entries        `json:"Entries"`
+	}{
+		Title:        c.Identifier,
+		Order:        c.Order,
+		Translations: c.DisplayName,
+		Entries:      c.Entries,
+	})
 }

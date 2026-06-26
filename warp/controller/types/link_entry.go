@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -31,6 +32,27 @@ type Entry struct {
 	DisplayName TranslationMap
 	Href        string
 	Target      Target
+}
+
+// MarshalJSON serialises Entry using its API-facing JSON shape: Title maps to
+// Identifier, DisplayName is the German translation (legacy flat field), and
+// Translations carries the full locale map.
+func (e Entry) MarshalJSON() ([]byte, error) {
+	displayName := e.DisplayName[LocaleDe]
+
+	return json.Marshal(struct {
+		Title        string         `json:"Title"`
+		DisplayName  string         `json:"DisplayName"`
+		Href         string         `json:"Href"`
+		Target       Target         `json:"Target"`
+		Translations TranslationMap `json:"Translations"`
+	}{
+		Title:        e.Identifier,
+		DisplayName:  displayName,
+		Href:         e.Href,
+		Target:       e.Target,
+		Translations: e.DisplayName,
+	})
 }
 
 // Target defines where a link opens.

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -195,6 +196,72 @@ func TestCategories_InsertEntries(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.categories.InsertEntries(tt.entries)
 			tt.check(t, result)
+		})
+	}
+}
+
+func TestCategory_MarshalJSON(t *testing.T) {
+	type jsonEntry struct {
+		Title        string            `json:"Title"`
+		DisplayName  string            `json:"DisplayName"`
+		Href         string            `json:"Href"`
+		Target       string            `json:"Target"`
+		Translations map[string]string `json:"Translations"`
+	}
+	type jsonCategory struct {
+		Title        string            `json:"Title"`
+		Order        int               `json:"Order"`
+		Translations map[string]string `json:"Translations"`
+		Entries      []jsonEntry       `json:"Entries"`
+	}
+
+	tests := []struct {
+		name     string
+		input    Category
+		expected jsonCategory
+	}{
+		{
+			name: "full category with entries",
+			input: Category{
+				Identifier:  "apps",
+				DisplayName: TranslationMap{LocaleDe: "Anwendungen", LocaleEn: "Applications"},
+				Order:       500,
+				Entries: Entries{
+					{Identifier: "my-app", DisplayName: TranslationMap{LocaleDe: "Meine App", LocaleEn: "My App"}, Href: "/apps/my-app", Target: TARGET_SELF},
+				},
+			},
+			expected: jsonCategory{
+				Title:        "apps",
+				Order:        500,
+				Translations: map[string]string{"de": "Anwendungen", "en": "Applications"},
+				Entries:      []jsonEntry{{Title: "my-app", DisplayName: "Meine App", Href: "/apps/my-app", Target: "self", Translations: map[string]string{"de": "Meine App", "en": "My App"}}},
+			},
+		},
+		{
+			name: "category with empty DisplayName and no entries",
+			input: Category{
+				Identifier:  "empty",
+				DisplayName: TranslationMap{},
+				Order:       defaultCategoryOrder,
+				Entries:     Entries{},
+			},
+			expected: jsonCategory{
+				Title:        "empty",
+				Order:        defaultCategoryOrder,
+				Translations: map[string]string{},
+				Entries:      []jsonEntry{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.input)
+			require.NoError(t, err)
+
+			var got jsonCategory
+			require.NoError(t, json.Unmarshal(data, &got))
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
