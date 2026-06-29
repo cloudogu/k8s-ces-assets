@@ -410,9 +410,9 @@ func TestReadWarpPath(t *testing.T) {
 	}
 }
 
-// ── ReadDeploymentName ───────────────────────────────────────────────────────
+// ── ReadComponentName ───────────────────────────────────────────────────────
 
-func TestReadDeploymentName(t *testing.T) {
+func TestReadComponentName(t *testing.T) {
 	tests := []struct {
 		name      string
 		setEnv    bool
@@ -423,34 +423,34 @@ func TestReadDeploymentName(t *testing.T) {
 		{
 			name:      "environment variable is set returns the value without error",
 			setEnv:    true,
-			envValue:  "k8s-ces-assets-warp",
-			wantValue: "k8s-ces-assets-warp",
+			envValue:  "k8s-ces-assets",
+			wantValue: "k8s-ces-assets",
 		},
 		{
 			name:    "environment variable is unset returns a descriptive error",
 			setEnv:  false,
-			wantErr: "failed to read deployment name from environment variable",
+			wantErr: "failed to read component name from environment variable",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			previous, exists := os.LookupEnv(deploymentNameEnvVar)
+			previous, exists := os.LookupEnv(componentNameEnvVar)
 			defer func() {
 				if exists {
-					os.Setenv(deploymentNameEnvVar, previous)
+					os.Setenv(componentNameEnvVar, previous)
 				} else {
-					os.Unsetenv(deploymentNameEnvVar)
+					os.Unsetenv(componentNameEnvVar)
 				}
 			}()
 
 			if tt.setEnv {
-				require.NoError(t, os.Setenv(deploymentNameEnvVar, tt.envValue))
+				require.NoError(t, os.Setenv(componentNameEnvVar, tt.envValue))
 			} else {
-				require.NoError(t, os.Unsetenv(deploymentNameEnvVar))
+				require.NoError(t, os.Unsetenv(componentNameEnvVar))
 			}
 
-			got, err := ReadDeploymentName()
+			got, err := ReadComponentName()
 
 			if tt.wantErr != "" {
 				require.Error(t, err)

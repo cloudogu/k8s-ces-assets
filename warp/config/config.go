@@ -22,9 +22,9 @@ const (
 	WarpConfigMap = "k8s-ces-warp-config"
 	// namespaceEnvVar is the environment variable that defines the Kubernetes namespace
 	// the controller should watch for WarpMenuEntry resources.
-	namespaceEnvVar      = "WATCH_NAMESPACE"
-	warpPathEnvVar       = "WARP_PATH"
-	deploymentNameEnvVar = "DEPLOYMENT_NAME"
+	namespaceEnvVar     = "WATCH_NAMESPACE"
+	warpPathEnvVar      = "WARP_PATH"
+	componentNameEnvVar = "COMPONENT_NAME"
 )
 
 var logger = ctrl.Log.WithName("k8s-ces-assets.config")
@@ -228,12 +228,12 @@ func ReadWarpPath() (string, error) {
 		"found target warp path: [%s]")
 }
 
-// ReadDeploymentName returns the name of the controller deployment, read from the
-// DEPLOYMENT_NAME environment variable.
-func ReadDeploymentName() (string, error) {
-	return getEnvlookup(deploymentNameEnvVar,
-		"failed to read deployment name from environment variable [%s], please set the variable and try again",
-		"found target deployment name: [%s]")
+// ReadComponentName returns the name of the controller deployment, read from the
+// COMPONENT_NAME environment variable.
+func ReadComponentName() (string, error) {
+	return getEnvlookup(componentNameEnvVar,
+		"failed to read component name from environment variable [%s], please set the variable and try again",
+		"found target component name: [%s]")
 }
 
 func WarpConfigMapPredicate() predicate.Predicate {

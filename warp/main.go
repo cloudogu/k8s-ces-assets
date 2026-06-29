@@ -80,7 +80,7 @@ func start() error {
 func setupWarpMenuReconciler(warpMenuManager k8sManager, watchNamespace string) error {
 	warpMenuClient := warpMenuManager.GetClient()
 
-	deploymentName, err := config.ReadDeploymentName()
+	deploymentName, err := config.ReadComponentName()
 	if err != nil {
 		return fmt.Errorf("read config value 'deployment name': %w", err)
 	}
