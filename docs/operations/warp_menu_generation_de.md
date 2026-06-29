@@ -1,124 +1,139 @@
 # Generierung der Einträge des Warp-Menüs
 
-Die `k8s-ces-assets` sind zuständig für die Generierung der `menu.json` des Warp-Menüs.
-Dazu implementieren sie, ähnlich wie es `ces-confd` gemacht hat, einen Watch auf bestimmte Pfade in der globalen Konfiguration und lokalen Dogu-Registry.
-Bei einer Änderung z.B. einer Dogu-Installation generieren die `k8s-ces-assets` neue Einträge
-und schreiben diese in die Datei `/var/www/html/warp/menu/menu.json`. Der Unter-Ordner `menu` ist notwendig, da die Datei über zwei Container geteilt wird
-und das Mounten der Datei die restlichen Dateien im Oberordner löschen würde.
+Der `k8s-ces-assets`-Operator generiert die `menu.json`, die das Warp-Menü steuert.
+Das Menü wird bei jeder Änderung einer der beiden Quellen neu erstellt:
 
-## Konfiguration
+- **WarpMenuEntry-Custom-Resources** — werden von Dogus-Entwicklern erstellt, um ihre
+  Anwendungen im Warp-Menü zu registrieren.
+- **ConfigMap `k8s-ces-warp-config`** — definiert Standardkategorien und statische
+  Einträge; wird über die `values.yaml` verwaltet.
 
-### Quellen
+---
 
-Es ist möglich 3 Arten von Quellen für den Watch anzugeben.
+## Standardkategorien und -einträge konfigurieren
 
-#### Dogus
-```yaml
-sources:
-  - path: /dogu
-    type: dogus
-    tag: warp
-```
-
-#### Externe Links
-```yaml
-sources:
-  - path: externals
-    type: externals
-```
-
-Externe Links müssen folgender Struktur (YAML-String) in der globalen Konfiguration entsprechen:
+Standardkategorien und statische Einträge werden in der `values.yaml` unter dem Schlüssel
+`warp` konfiguriert. Helm rendert diese Werte automatisch in die ConfigMap
+`k8s-ces-warp-config` — **die ConfigMap sollte nicht direkt bearbeitet werden**. Eine Konfiguration kann wie folgt aussehen:
 
 ```yaml
-cloudogu: |
-  DisplayName: Cloudogu
-  Description: Beschreibungstext für Cloudogu Webseite
-  Category: External Links
-  URL: https://www.cloudogu.com
+warp:
+  categories:
+    Development Apps:
+      order: 100
+      displayName:
+        de: "Anwendungen"
+        en: "Applications"
+    Support:
+      order: 400
+      displayName:
+        de: "Support"
+        en: "Support"
+
+  defaultEntries:
+    docsCloudoguComUrl:
+      enabled: true
+      category: "Support"
+      displayName:
+        de: "Cloudogu EcoSystem Dokumentation"
+        en: "Cloudogu EcoSystem documentation"
+      href: "https://docs.cloudogu.com"
+    aboutCloudoguToken:
+      enabled: true
+      category: "Support"
+      displayName:
+        de: "Über Cloudogu"
+        en: "About Cloudogu"
+      href: "/info/about"
+    platform:
+      enabled: false           # auf true setzen, um diesen Eintrag zu aktivieren
+      category: "Support"
+      displayName:
+        de: "cloudogu platform"
+        en: "cloudogu platform"
+      href: "https://platform.cloudogu.com"
 ```
 
-#### Konfiguration für Support-Einträge in der globalen Konfiguration
-Die Konfiguration der Support-Einträge erfolgt direkt in der globalen Konfiguration mithilfe der folgenden drei Schlüssel:
-  - block_warpmenu_support_category
-  - allowed_warpmenu_support_entries
-  - disabled_warpmenu_support_entries
+### Kategorien (`warp.categories`)
 
-##### Alle Einträge ausblenden
-Wenn alle Support-Einträge des warp-menu nicht angezeigt werden sollen, kann dies über die globale Konfiguration `block_warpmenu_support_category` konfiguriert werden.
+Jeder Schlüssel ist der **Kategoriebezeichner**, den WarpMenuEntry-Resources und
+Standard-Einträge verwenden, um Links einzusortieren. Unbekannte Kategorien werden
+automatisch unten im Warp-Menü angelegt.
+
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `order` | nein | Anzeigeposition. Niedrigere Werte erscheinen weiter oben. Standard: 9999. |
+| `displayName.de` | nein | Deutscher Kategoriename. Ohne Angabe wird der Bezeichner verwendet. |
+| `displayName.en` | nein | Englischer Kategoriename. Ohne Angabe wird der Bezeichner verwendet. |
+
+### Standard-Einträge (`warp.defaultEntries`)
+
+Standard-Einträge sind statische Links, die unabhängig von den installierten Dogus immer
+im Menü erscheinen. Mit `enabled: false` lässt sich ein Eintrag deaktivieren, ohne ihn
+aus der `values.yaml` zu entfernen.
+
+| Feld | Pflicht | Beschreibung |
+|---|---|---|
+| `enabled` | ja | Bei `false` wird der Eintrag nicht im Menü angezeigt. |
+| `category` | ja | Kategorie, dem dieser Eintrag zugeordnet wird. |
+| `displayName.de` | ja | Deutscher Anzeigename. |
+| `displayName.en` | ja | Englischer Anzeigename. |
+| `href` | ja | URL oder Pfad. Eine absolute URL (mit Schema, z. B. `https://`) öffnet den Link in einem neuen Tab. Ein relativer Pfad (z. B. `/info/about`) öffnet ihn im selben Fenster. |
+
+---
+
+## Einträge über WarpMenuEntry-Resources hinzufügen
+
+Dogu-Entwickler registrieren ihre Anwendungen im Warp-Menü, indem sie eine
+`WarpMenuEntry`-Custom-Resource im zugehörigen Namespace erstellen.
+
+```yaml
+apiVersion: k8s.cloudogu.com/v1
+kind: WarpMenuEntry
+metadata:
+  name: my-dogu
+  namespace: ecosystem
+spec:
+  displayName:
+    de: "Mein Dogu"
+    en: "My Dogu"
+  category: "Development Apps"
+  path: /my-dogu
+```
+
+### Spec-Felder
+
+| Feld | Pflicht | Einschränkungen | Beschreibung |
+|---|---|---|---|
+| `displayName.de` | ja | 1–50 Zeichen | Deutscher Anzeigename im Menü. |
+| `displayName.en` | ja | 1–50 Zeichen | Englischer Anzeigename im Menü. |
+| `category` | ja | 1–50 Zeichen | Kategorie. Einen vordefinierten Schlüssel aus der `values.yaml` verwenden oder einen neuen angeben (Reihenfolge: 9999). |
+| `path` | ja | beginnt mit `/` | Serverrelativer URL-Pfad, z. B. `/my-dogu`. Darf keine Domain oder Schema enthalten. |
+| `disabled` | nein | boolean | Bei `true` wird der Eintrag aus dem Menü ausgeblendet, ohne die Resource zu löschen. Standard: `false`. |
+
+### Status-Conditions
+
+Der Operator setzt nach jeder Reconciliation zwei Conditions am WarpMenuEntry.
+
+| Condition | Status | Bedeutung |
+|---|---|---|
+| `Ready` | `True` | Eintrag ist gültig und das Menü wurde erfolgreich neu erstellt. |
+| `Ready` | `False` | Eintrag hat einen Validierungsfehler (z. B. ungültiger Pfad, leere Kategorie) oder ein interner Fehler ist aufgetreten. Condition-Message oder Operator-Events prüfen. |
+| `Visible` | `True` | Eintrag ist aktuell im Menü gerendert. |
+| `Visible` | `False` | Eintrag ist ausgeblendet — entweder weil `disabled: true` gesetzt ist oder weil der Eintrag die Validierung nicht bestanden hat. |
+
+Ressource inspizieren:
+
 ```shell
-# alle Einträge ausblenden
-kubectl edit configmap global-config --namespace ecosystem
-```
-Edit:
-```yaml
-data:
-  config.yaml:
-    block_warpmenu_support_category: "true"
-```
-##### keine Einträge ausblenden
-```shell
-# alle Einträge ausblenden
-kubectl edit configmap global-config --namespace ecosystem
-```
-Edit:
-```yaml
-data:
-  config.yaml:
-    block_warpmenu_support_category: "false"
+kubectl get warp -n ecosystem
+kubectl describe warp my-dogu -n ecosystem
 ```
 
-##### Nur einzelne Einträge anzeigen
-Wenn alle Support-Einträge des warp-menu ausgeblendet sind, aber trotzen einzelne davon angezeigt werden sollen, kann dies über die globale Konfiguration `allowed_warpmenu_support_entries` konfiguriert werden.
-Dort muss ein JSON-Array, mit den anzuzeigenden Einträgen angegeben werden.
-```yaml
-allowed_warpmenu_support_entries: '["platform", "aboutCloudoguToken"]'
-```
+### Eintrag vorübergehend ausblenden
 
-> Diese Konfiguration ist nur wirksam, wenn **alle** Einträge ausgeblendet sind (siehe [oben](#alle-einträge-ausblenden)).
-
-##### Einzelne Einträge ausblenden
-Wenn einzelne Einträge im warp-menu nicht gerendert werden sollen, kann dies über die globale Konfiguration `disabled_warpmenu_support_entries` konfiguriert werden.
-Dort muss ein JSON-Array, mit den auszublendenden Einträgen angegeben werden.
+`disabled: true` setzen, um einen Eintrag zu verstecken, ohne die Resource zu löschen:
 
 ```yaml
-disabled_warpmenu_support_entries: '["docsCloudoguComUrl", "aboutCloudoguToken"]'
-```
-
-> Diese Konfiguration ist nur wirksam, wenn **nicht** alle Einträge ausgeblendet sind (siehe [oben](#alle-einträge-ausblenden)).
-
-### Order
-Mit der Kategorie `order` lassen sich die bestimmten Dogu-Kategorien aus der `dogu.json` im Warp-Menü sortieren.
-Ein höherer Wert wird im Warp-Menü weiter oben angezeigt.
-
-### Support
-Support Links stellen feste Links, welche im unteren Teil des Warp-Menüs angezeigt werden, dar.
-
-```yaml
-support:
-  - identifier: docsCloudoguComUrl
-    external: true
-    href: https://docs.cloudogu.com/
-```
-
-### Standardkonfiguration
-```yaml
-sources:
-  - path: /dogu
-    type: dogus
-    tag: warp
-  - path: externals
-    type: externals
-target: /var/www/html/warp/menu.json
-order:
-  Development Apps: 100
-support:
-  - identifier: docsCloudoguComUrl
-    external: true
-    href: https://docs.cloudogu.com/
-  - identifier: aboutCloudoguToken
-    external: false
-    href: /info/about
-  - identifier: platform
-    external: true
-    href: https://platform.cloudogu.com
+spec:
+  disabled: true
 ```
