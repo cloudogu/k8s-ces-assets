@@ -124,10 +124,10 @@ func mapYamlConfigToDefaultEntries(entries map[string]yaml.Node) (types2.Entries
 		defaultEntry := types2.EntryWithCategory{
 			Category: eDTO.Category,
 			Entry: types2.Entry{
-				Identifier:  entryName,
-				DisplayName: make(types2.TranslationMap),
-				Href:        eDTO.Link,
-				Target:      types2.TARGET_SELF,
+				Identifier:   entryName,
+				Localization: make(types2.LocalizationMap),
+				Href:         eDTO.Link,
+				Target:       types2.TARGET_SELF,
 			},
 		}
 
@@ -136,7 +136,7 @@ func mapYamlConfigToDefaultEntries(entries map[string]yaml.Node) (types2.Entries
 		}
 
 		var localeErrs []error
-		defaultEntry.DisplayName, localeErrs = mapToTranslationMap(eDTO.DisplayName, entryName, "entry")
+		defaultEntry.Localization, localeErrs = mapToLocalizationMap(eDTO.DisplayName, entryName, "entry")
 		if len(localeErrs) > 0 {
 			mappingErrs = append(mappingErrs, localeErrs...)
 		}
@@ -170,7 +170,7 @@ func mapYamlConfigToDefaultCategories(categories map[string]yaml.Node) (types2.C
 		}
 
 		var localeErrs []error
-		defaultCategory.DisplayName, localeErrs = mapToTranslationMap(cDTO.DisplayName, categoryName, "category")
+		defaultCategory.Localization, localeErrs = mapToLocalizationMap(cDTO.DisplayName, categoryName, "category")
 		if len(localeErrs) > 0 {
 			mappingErrs = append(mappingErrs, localeErrs...)
 		}
@@ -181,9 +181,9 @@ func mapYamlConfigToDefaultCategories(categories map[string]yaml.Node) (types2.C
 	return defaultCategories, errors.Join(mappingErrs...)
 }
 
-func mapToTranslationMap(displayName DisplayNameDTO, identifier string, contextName string) (types2.TranslationMap, []error) {
+func mapToLocalizationMap(displayName DisplayNameDTO, identifier string, contextName string) (types2.LocalizationMap, []error) {
 	var errs []error
-	translationMap := make(types2.TranslationMap)
+	localizationMap := make(types2.LocalizationMap)
 
 	for localeString, translation := range displayName {
 		locale := types2.LocaleFromString(localeString)
@@ -191,15 +191,15 @@ func mapToTranslationMap(displayName DisplayNameDTO, identifier string, contextN
 			errs = append(errs, fmt.Errorf("unknown locale %s in %s %s", localeString, contextName, identifier))
 			continue
 		}
-		translationMap[locale] = translation
+		localizationMap[locale] = translation
 	}
 
-	// Fall back to the identifier when no valid translations were provided.
-	if len(translationMap) == 0 {
-		return types2.TranslationMapFromIdentifier(identifier), errs
+	// Fall back to the identifier when no valid localizations were provided.
+	if len(localizationMap) == 0 {
+		return types2.LocalizationMapFromIdentifier(identifier), errs
 	}
 
-	return translationMap, errs
+	return localizationMap, errs
 }
 
 func getEnvlookup(env, errormessage, logMessage string) (string, error) {

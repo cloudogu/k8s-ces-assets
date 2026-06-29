@@ -42,12 +42,12 @@ func LocaleFromString(localeString string) Locale {
 	}
 }
 
-// TranslationMap holds one translated string per Locale.
-type TranslationMap map[Locale]string
+// LocalizationMap holds one translated string per Locale.
+type LocalizationMap map[Locale]string
 
 // MarshalJSON serialises the map with locale keys so the JSON output is
 // human-readable (e.g. {"de":"Hallo","en":"Hello"} instead of numeric keys).
-func (d TranslationMap) MarshalJSON() ([]byte, error) {
+func (d LocalizationMap) MarshalJSON() ([]byte, error) {
 	resultMap := make(map[string]string)
 
 	for locale, translation := range d {
@@ -57,10 +57,10 @@ func (d TranslationMap) MarshalJSON() ([]byte, error) {
 	return json.Marshal(resultMap)
 }
 
-// TranslationMapFromIdentifier returns a TranslationMap whose "de" and "en"
+// LocalizationMapFromIdentifier returns a LocalizationMap whose "de" and "en"
 // values are both set to s. Useful when only a locale-independent identifier is
 // available and no separate translations exist yet.
-func TranslationMapFromIdentifier(s string) TranslationMap {
+func LocalizationMapFromIdentifier(s string) LocalizationMap {
 	return map[Locale]string{
 		LocaleDe: s,
 		LocaleEn: s,

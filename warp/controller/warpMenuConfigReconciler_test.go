@@ -281,8 +281,8 @@ func TestMapWarpCRToEntryWithCategory(t *testing.T) {
 		assert.Equal(t, "my-app", entry.Entry.Identifier)
 		assert.Equal(t, "/my-app", entry.Entry.Href)
 		assert.Equal(t, domain.TARGET_SELF, entry.Entry.Target)
-		assert.Equal(t, "Meine App", entry.Entry.DisplayName[domain.LocaleDe])
-		assert.Equal(t, "My App", entry.Entry.DisplayName[domain.LocaleEn])
+		assert.Equal(t, "Meine App", entry.Entry.Localization[domain.LocaleDe])
+		assert.Equal(t, "My App", entry.Entry.Localization[domain.LocaleEn])
 	})
 
 	t.Run("empty category returns error", func(t *testing.T) {
@@ -335,7 +335,7 @@ func expectedEntry(name, displayNameDE, displayNameEN, href string) []warpMenuEn
 		DisplayName: displayNameDE,
 		Href:        href,
 		Target:      "self",
-		Translations: map[string]string{
+		Localization: map[string]string{
 			"de": displayNameDE,
 			"en": displayNameEN,
 		},
@@ -445,7 +445,7 @@ type warpMenuEntryJSON struct {
 	DisplayName  string            `json:"DisplayName"`
 	Href         string            `json:"Href"`
 	Target       string            `json:"Target"`
-	Translations map[string]string `json:"Translations"`
+	Localization map[string]string `json:"Localization"`
 }
 
 // ── Fake client builders ─────────────────────────────────────────────────────

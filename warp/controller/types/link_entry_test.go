@@ -111,7 +111,7 @@ func TestEntry_MarshalJSON(t *testing.T) {
 		DisplayName  string            `json:"DisplayName"`
 		Href         string            `json:"Href"`
 		Target       string            `json:"Target"`
-		Translations map[string]string `json:"Translations"`
+		Localization map[string]string `json:"Localization"`
 	}
 
 	tests := []struct {
@@ -122,33 +122,33 @@ func TestEntry_MarshalJSON(t *testing.T) {
 		{
 			name: "full entry with both locales",
 			input: Entry{
-				Identifier:  "nexus",
-				DisplayName: TranslationMap{LocaleDe: "Nexus", LocaleEn: "Nexus"},
-				Href:        "/nexus",
-				Target:      TARGET_EXTERNAL,
+				Identifier:   "nexus",
+				Localization: LocalizationMap{LocaleDe: "Nexus", LocaleEn: "Nexus"},
+				Href:         "/nexus",
+				Target:       TARGET_EXTERNAL,
 			},
 			expected: jsonEntry{
 				Title:        "nexus",
 				DisplayName:  "Nexus",
 				Href:         "/nexus",
 				Target:       "external",
-				Translations: map[string]string{"de": "Nexus", "en": "Nexus"},
+				Localization: map[string]string{"de": "Nexus", "en": "Nexus"},
 			},
 		},
 		{
 			name: "entry without german translation yields empty DisplayName",
 			input: Entry{
-				Identifier:  "tool",
-				DisplayName: TranslationMap{LocaleEn: "Tool"},
-				Href:        "/tool",
-				Target:      TARGET_SELF,
+				Identifier:   "tool",
+				Localization: LocalizationMap{LocaleEn: "Tool"},
+				Href:         "/tool",
+				Target:       TARGET_SELF,
 			},
 			expected: jsonEntry{
 				Title:        "tool",
 				DisplayName:  "",
 				Href:         "/tool",
 				Target:       "self",
-				Translations: map[string]string{"en": "Tool"},
+				Localization: map[string]string{"en": "Tool"},
 			},
 		},
 	}

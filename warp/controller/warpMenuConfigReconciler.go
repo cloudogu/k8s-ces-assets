@@ -382,7 +382,7 @@ func mapWarpCRToEntryWithCategory(crEntry warpmenu.WarpMenuEntry) (domain.EntryW
 		Category: crEntry.Spec.Category,
 		Entry: domain.Entry{
 			Identifier: crEntry.GetName(),
-			DisplayName: domain.TranslationMap{
+			Localization: domain.LocalizationMap{
 				domain.LocaleDe: crEntry.Spec.DisplayName.DE,
 				domain.LocaleEn: crEntry.Spec.DisplayName.EN,
 			},

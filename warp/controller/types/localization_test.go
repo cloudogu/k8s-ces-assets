@@ -46,30 +46,30 @@ func TestLocaleFromString(t *testing.T) {
 	}
 }
 
-func TestTranslationMap_MarshalJSON(t *testing.T) {
+func TestLocalizationMap_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    TranslationMap
+		input    LocalizationMap
 		expected map[string]string
 	}{
 		{
 			name:     "both locales",
-			input:    TranslationMap{LocaleDe: "Hallo", LocaleEn: "Hello"},
+			input:    LocalizationMap{LocaleDe: "Hallo", LocaleEn: "Hello"},
 			expected: map[string]string{"de": "Hallo", "en": "Hello"},
 		},
 		{
 			name:     "only german",
-			input:    TranslationMap{LocaleDe: "Hallo"},
+			input:    LocalizationMap{LocaleDe: "Hallo"},
 			expected: map[string]string{"de": "Hallo"},
 		},
 		{
 			name:     "only english",
-			input:    TranslationMap{LocaleEn: "Hello"},
+			input:    LocalizationMap{LocaleEn: "Hello"},
 			expected: map[string]string{"en": "Hello"},
 		},
 		{
 			name:     "empty map",
-			input:    TranslationMap{},
+			input:    LocalizationMap{},
 			expected: map[string]string{},
 		},
 	}
@@ -85,7 +85,7 @@ func TestTranslationMap_MarshalJSON(t *testing.T) {
 	}
 }
 
-func TestTranslationMapFromIdentifier(t *testing.T) {
+func TestLocalizationMapFromIdentifier(t *testing.T) {
 	tests := []struct {
 		input string
 	}{
@@ -95,7 +95,7 @@ func TestTranslationMapFromIdentifier(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := TranslationMapFromIdentifier(tt.input)
+			result := LocalizationMapFromIdentifier(tt.input)
 			assert.Equal(t, tt.input, result[LocaleDe])
 			assert.Equal(t, tt.input, result[LocaleEn])
 		})

@@ -72,8 +72,8 @@ func TestCreateCategoryFromIdentifier(t *testing.T) {
 
 	assert.Equal(t, "myapp", cat.Identifier)
 	assert.Equal(t, defaultCategoryOrder, cat.Order)
-	assert.NotNil(t, cat.DisplayName, "DisplayName must be initialised")
-	assert.Empty(t, cat.DisplayName)
+	assert.NotNil(t, cat.Localization, "Localization must be initialised")
+	assert.Empty(t, cat.Localization)
 	assert.NotNil(t, cat.Entries, "Entries must be initialised")
 	assert.Empty(t, cat.Entries)
 }
@@ -108,8 +108,8 @@ func TestCategories_InsertCategory(t *testing.T) {
 }
 
 func TestCategories_InsertEntries(t *testing.T) {
-	supportDisplayName := TranslationMap{LocaleDe: "Support", LocaleEn: "Support"}
-	appsDisplayName := TranslationMap{LocaleDe: "Apps", LocaleEn: "Apps"}
+	supportDisplayName := LocalizationMap{LocaleDe: "Support", LocaleEn: "Support"}
+	appsDisplayName := LocalizationMap{LocaleDe: "Apps", LocaleEn: "Apps"}
 
 	tests := []struct {
 		name       string
@@ -120,7 +120,7 @@ func TestCategories_InsertEntries(t *testing.T) {
 		{
 			name: "entry goes into existing matching category",
 			categories: Categories{
-				{Identifier: "support", DisplayName: supportDisplayName, Order: 400},
+				{Identifier: "support", Localization: supportDisplayName, Order: 400},
 			},
 			entries: EntriesWithCategory{
 				{Category: "support", Entry: Entry{Identifier: "docs", Href: "/docs"}},
@@ -128,7 +128,7 @@ func TestCategories_InsertEntries(t *testing.T) {
 			check: func(t *testing.T, result Categories) {
 				assert.Len(t, result, 1)
 				assert.Equal(t, "support", result[0].Identifier)
-				assert.Equal(t, supportDisplayName, result[0].DisplayName, "DisplayName must be preserved from existing category")
+				assert.Equal(t, supportDisplayName, result[0].Localization, "DisplayName must be preserved from existing category")
 				assert.Equal(t, 400, result[0].Order, "Order must be preserved from existing category")
 				assert.Len(t, result[0].Entries, 1)
 				assert.Equal(t, "docs", result[0].Entries[0].Identifier)
@@ -150,7 +150,7 @@ func TestCategories_InsertEntries(t *testing.T) {
 		{
 			name: "entries within a category are sorted by identifier",
 			categories: Categories{
-				{Identifier: "apps", DisplayName: appsDisplayName, Order: 100},
+				{Identifier: "apps", Localization: appsDisplayName, Order: 100},
 			},
 			entries: EntriesWithCategory{
 				{Category: "apps", Entry: Entry{Identifier: "z-tool"}},
@@ -206,12 +206,12 @@ func TestCategory_MarshalJSON(t *testing.T) {
 		DisplayName  string            `json:"DisplayName"`
 		Href         string            `json:"Href"`
 		Target       string            `json:"Target"`
-		Translations map[string]string `json:"Translations"`
+		Localization map[string]string `json:"Localization"`
 	}
 	type jsonCategory struct {
 		Title        string            `json:"Title"`
 		Order        int               `json:"Order"`
-		Translations map[string]string `json:"Translations"`
+		Localization map[string]string `json:"Localization"`
 		Entries      []jsonEntry       `json:"Entries"`
 	}
 
@@ -223,32 +223,32 @@ func TestCategory_MarshalJSON(t *testing.T) {
 		{
 			name: "full category with entries",
 			input: Category{
-				Identifier:  "apps",
-				DisplayName: TranslationMap{LocaleDe: "Anwendungen", LocaleEn: "Applications"},
-				Order:       500,
+				Identifier:   "apps",
+				Localization: LocalizationMap{LocaleDe: "Anwendungen", LocaleEn: "Applications"},
+				Order:        500,
 				Entries: Entries{
-					{Identifier: "my-app", DisplayName: TranslationMap{LocaleDe: "Meine App", LocaleEn: "My App"}, Href: "/apps/my-app", Target: TARGET_SELF},
+					{Identifier: "my-app", Localization: LocalizationMap{LocaleDe: "Meine App", LocaleEn: "My App"}, Href: "/apps/my-app", Target: TARGET_SELF},
 				},
 			},
 			expected: jsonCategory{
 				Title:        "apps",
 				Order:        500,
-				Translations: map[string]string{"de": "Anwendungen", "en": "Applications"},
-				Entries:      []jsonEntry{{Title: "my-app", DisplayName: "Meine App", Href: "/apps/my-app", Target: "self", Translations: map[string]string{"de": "Meine App", "en": "My App"}}},
+				Localization: map[string]string{"de": "Anwendungen", "en": "Applications"},
+				Entries:      []jsonEntry{{Title: "my-app", DisplayName: "Meine App", Href: "/apps/my-app", Target: "self", Localization: map[string]string{"de": "Meine App", "en": "My App"}}},
 			},
 		},
 		{
 			name: "category with empty DisplayName and no entries",
 			input: Category{
-				Identifier:  "empty",
-				DisplayName: TranslationMap{},
-				Order:       defaultCategoryOrder,
-				Entries:     Entries{},
+				Identifier:   "empty",
+				Localization: LocalizationMap{},
+				Order:        defaultCategoryOrder,
+				Entries:      Entries{},
 			},
 			expected: jsonCategory{
 				Title:        "empty",
 				Order:        defaultCategoryOrder,
-				Translations: map[string]string{},
+				Localization: map[string]string{},
 				Entries:      []jsonEntry{},
 			},
 		},

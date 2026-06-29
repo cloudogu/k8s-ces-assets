@@ -124,9 +124,9 @@ defaultEntries:
 				require.Len(t, cfg.DefaultCategories, 1, "entry must still be created despite unknown locale")
 				require.Len(t, cfg.DefaultCategories[0].Entries, 1)
 				entry := cfg.DefaultCategories[0].Entries[0]
-				assert.Equal(t, "myEntry", entry.DisplayName[types2.LocaleDe],
+				assert.Equal(t, "myEntry", entry.Localization[types2.LocaleDe],
 					"de display name should fall back to identifier")
-				assert.Equal(t, "myEntry", entry.DisplayName[types2.LocaleEn],
+				assert.Equal(t, "myEntry", entry.Localization[types2.LocaleEn],
 					"en display name should fall back to identifier")
 			},
 		},
@@ -187,9 +187,9 @@ defaultEntries: {}
 			check: func(t *testing.T, cfg *Configuration) {
 				require.Len(t, cfg.DefaultCategories, 1, "category must still be created despite unknown locale")
 				cat := cfg.DefaultCategories[0]
-				assert.Equal(t, "myCategory", cat.DisplayName[types2.LocaleDe],
+				assert.Equal(t, "myCategory", cat.Localization[types2.LocaleDe],
 					"de display name should fall back to identifier")
-				assert.Equal(t, "myCategory", cat.DisplayName[types2.LocaleEn],
+				assert.Equal(t, "myCategory", cat.Localization[types2.LocaleEn],
 					"en display name should fall back to identifier")
 			},
 		},

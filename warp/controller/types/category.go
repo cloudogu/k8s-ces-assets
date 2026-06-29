@@ -15,7 +15,7 @@ type Category struct {
 	// Identifier is the locale-independent key used for deduplication and sorting.
 	Identifier string
 	// DisplayName holds the translated category name for each supported locale.
-	DisplayName TranslationMap
+	Localization LocalizationMap
 	// Order controls the display position; higher values appear first.
 	Order int
 	// Entries is the ordered list of links belonging to this category.
@@ -27,10 +27,10 @@ type Category struct {
 // category is implied by an entry's tag but has no explicit configuration.
 func CreateCategoryFromIdentifier(identifier string) Category {
 	return Category{
-		Identifier:  identifier,
-		DisplayName: make(TranslationMap),
-		Order:       defaultCategoryOrder,
-		Entries:     make(Entries, 0),
+		Identifier:   identifier,
+		Localization: make(LocalizationMap),
+		Order:        defaultCategoryOrder,
+		Entries:      make(Entries, 0),
 	}
 }
 
@@ -112,14 +112,14 @@ func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
 // field names in the JSON output.
 func (c Category) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Title        string         `json:"Title"`
-		Order        int            `json:"Order"`
-		Translations TranslationMap `json:"Translations"`
-		Entries      Entries        `json:"Entries"`
+		Title        string          `json:"Title"`
+		Order        int             `json:"Order"`
+		Localization LocalizationMap `json:"Localization"`
+		Entries      Entries         `json:"Entries"`
 	}{
 		Title:        c.Identifier,
 		Order:        c.Order,
-		Translations: c.DisplayName,
+		Localization: c.Localization,
 		Entries:      c.Entries,
 	})
 }
