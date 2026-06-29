@@ -89,7 +89,8 @@ func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
 		categoryName := entry.Category
 		cat, exists := categoryMap[categoryName]
 		if !exists {
-			cat = new(CreateCategoryFromIdentifier(categoryName))
+			newCat := CreateCategoryFromIdentifier(categoryName)
+			cat = &newCat
 			categoryMap[categoryName] = cat
 		}
 		cat.Entries = append(cat.Entries, entry.Entry)
