@@ -120,35 +120,67 @@ func TestEntry_MarshalJSON(t *testing.T) {
 		expected jsonEntry
 	}{
 		{
-			name: "full entry with both locales",
+			name: "both locales set — DE wins",
 			input: Entry{
 				Identifier:   "nexus",
-				Localization: LocalizationMap{LocaleDe: "Nexus", LocaleEn: "Nexus"},
+				Localization: LocalizationMap{LocaleDe: "Nexus DE", LocaleEn: "Nexus EN"},
 				Href:         "/nexus",
 				Target:       TARGET_EXTERNAL,
 			},
 			expected: jsonEntry{
 				Title:        "nexus",
-				DisplayName:  "Nexus",
+				DisplayName:  "Nexus DE",
 				Href:         "/nexus",
 				Target:       "external",
-				Localization: map[string]string{"de": "Nexus", "en": "Nexus"},
+				Localization: map[string]string{"de": "Nexus DE", "en": "Nexus EN"},
 			},
 		},
 		{
-			name: "entry without german translation yields empty DisplayName",
+			name: "only DE set",
+			input: Entry{
+				Identifier:   "nexus",
+				Localization: LocalizationMap{LocaleDe: "Nexus DE"},
+				Href:         "/nexus",
+				Target:       TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "nexus",
+				DisplayName:  "Nexus DE",
+				Href:         "/nexus",
+				Target:       "self",
+				Localization: map[string]string{"de": "Nexus DE"},
+			},
+		},
+		{
+			name: "only EN set — falls back to EN",
 			input: Entry{
 				Identifier:   "tool",
-				Localization: LocalizationMap{LocaleEn: "Tool"},
+				Localization: LocalizationMap{LocaleEn: "Tool EN"},
 				Href:         "/tool",
 				Target:       TARGET_SELF,
 			},
 			expected: jsonEntry{
 				Title:        "tool",
-				DisplayName:  "",
+				DisplayName:  "Tool EN",
 				Href:         "/tool",
 				Target:       "self",
-				Localization: map[string]string{"en": "Tool"},
+				Localization: map[string]string{"en": "Tool EN"},
+			},
+		},
+		{
+			name: "no locales set — falls back to Identifier",
+			input: Entry{
+				Identifier:   "my-app",
+				Localization: LocalizationMap{},
+				Href:         "/my-app",
+				Target:       TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "my-app",
+				DisplayName:  "my-app",
+				Href:         "/my-app",
+				Target:       "self",
+				Localization: map[string]string{},
 			},
 		},
 	}

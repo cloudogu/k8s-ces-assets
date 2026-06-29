@@ -34,12 +34,22 @@ type Entry struct {
 	Target       Target
 }
 
-// MarshalJSON serialises Entry using its API-facing JSON shape: Title maps to
-// Identifier, DisplayName is the German translation (legacy flat field), and
-// Translations carries the full locale map.
-func (e Entry) MarshalJSON() ([]byte, error) {
-	displayName := e.Localization[LocaleDe]
+// displayName returns the best available single-string display name for the entry,
+// trying LocaleDe first, then LocaleEn, then falling back to Identifier.
+func (e Entry) displayName() string {
+	if v := e.Localization[LocaleDe]; v != "" {
+		return v
+	}
+	if v := e.Localization[LocaleEn]; v != "" {
+		return v
+	}
+	return e.Identifier
+}
 
+// MarshalJSON serialises Entry using its API-facing JSON shape: Title maps to
+// Identifier, DisplayName is resolved via the de→en→identifier fallback chain, and
+// Localization carries the full locale map.
+func (e Entry) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Title        string          `json:"Title"`
 		DisplayName  string          `json:"DisplayName"`
@@ -48,7 +58,7 @@ func (e Entry) MarshalJSON() ([]byte, error) {
 		Localization LocalizationMap `json:"Localization"`
 	}{
 		Title:        e.Identifier,
-		DisplayName:  displayName,
+		DisplayName:  e.displayName(),
 		Href:         e.Href,
 		Target:       e.Target,
 		Localization: e.Localization,
