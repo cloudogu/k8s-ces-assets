@@ -20,10 +20,10 @@ func TestCategories_Less(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "higher order sorts before lower order",
+			name:     "lower order sorts before higher order",
 			a:        &Category{Order: 1},
 			b:        &Category{Order: 100},
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "equal order falls back to identifier ascending",
@@ -163,7 +163,7 @@ func TestCategories_InsertEntries(t *testing.T) {
 			},
 		},
 		{
-			name: "result categories are sorted by order descending",
+			name: "result categories are sorted by order ascending",
 			categories: Categories{
 				{Identifier: "low", Order: 10},
 				{Identifier: "high", Order: 500},
@@ -174,8 +174,8 @@ func TestCategories_InsertEntries(t *testing.T) {
 			},
 			check: func(t *testing.T, result Categories) {
 				require.Len(t, result, 2)
-				assert.Equal(t, "high", result[0].Identifier, "higher order must come first")
-				assert.Equal(t, "low", result[1].Identifier)
+				assert.Equal(t, "low", result[0].Identifier, "lower order must come first")
+				assert.Equal(t, "high", result[1].Identifier)
 			},
 		},
 		{

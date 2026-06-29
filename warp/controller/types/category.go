@@ -16,7 +16,7 @@ type Category struct {
 	Identifier string
 	// DisplayName holds the translated category name for each supported locale.
 	Localization LocalizationMap
-	// Order controls the display position; higher values appear first.
+	// Order controls the display position; lower values appear first (higher up in the menu).
 	Order int
 	// Entries is the ordered list of links belonging to this category.
 	Entries Entries
@@ -42,13 +42,13 @@ func (c Categories) Len() int {
 	return len(c)
 }
 
-// Less implements sort.Interface. Categories with a higher Order appear first;
+// Less implements sort.Interface. Categories with a lower Order appear first;
 // ties are broken by Identifier ascending.
 func (c Categories) Less(i, j int) bool {
 	if c[i].Order == c[j].Order {
 		return c[i].Identifier < c[j].Identifier
 	}
-	return c[i].Order > c[j].Order
+	return c[i].Order < c[j].Order
 }
 
 // Swap implements sort.Interface.
