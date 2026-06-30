@@ -155,7 +155,7 @@ func (r *WarpMenuConfigReconciler) writeWarpMenuFile(categories domain.Categorie
 // writeWarpMenuToTempFile marshals categories as indented JSON into a temporary file.
 // The file is closed before returning; callers may only use the returned handle for its name.
 func (r *WarpMenuConfigReconciler) writeWarpMenuToTempFile(categories domain.Categories, logger logr.Logger) (*os.File, error) {
-	tmpFile, err := os.CreateTemp(r.warpMenuPath, "menu-*.json")
+	tmpFile, err := os.OpenFile(r.warpMenuPath+"/menu.json.tmp", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file in %s: %w", r.warpMenuPath, err)
 	}
@@ -251,6 +251,8 @@ func (r *WarpMenuConfigReconciler) updateWarpCRStatus(ctx context.Context, recon
 	if statusError := r.updateStatusCondition(ctx, entry, visibleCondition, readyCondition); statusError != nil {
 		return wrapUpdateStatusError(statusError)
 	}
+
+	r.eventRecorder.Eventf(entry, nil, corev1.EventTypeNormal, reasonMenuUpdated, actionReconcile, "WarpMenuEntry has been applied successfully")
 
 	return nil
 }

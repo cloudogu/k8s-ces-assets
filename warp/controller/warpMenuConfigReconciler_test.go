@@ -49,6 +49,10 @@ func TestReconcile(t *testing.T) {
 		_, err := reconciler.Reconcile(context.Background(), req)
 		require.NoError(t, err)
 
+		info, err := os.Stat(reconciler.warpMenuPath + "/menu.json")
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0644), info.Mode().Perm())
+
 		categories := parseMenuJSON(t, reconciler.warpMenuPath)
 		assert.Len(t, categories, 2)
 		devApps, found := findCategory(categories, "DevApps")
