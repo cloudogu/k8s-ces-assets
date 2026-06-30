@@ -218,30 +218,9 @@ func (r *WarpMenuConfigReconciler) updateWarpCRStatus(ctx context.Context, recon
 
 	mErr, invalid := validationErrs[reconcileReq.Name]
 	if invalid {
-		// warp cr is invalid and is skipped by the operator
-		r.eventRecorder.Eventf(entry, nil, corev1.EventTypeWarning, reasonInvalidEntry, actionReconcile,
-			"warp cr is invalid: %v", mErr)
-
-		visibleCondition := v1.Condition{
-			Type:               warpmenu.ConditionVisible,
-			Status:             v1.ConditionFalse,
-			ObservedGeneration: entry.Generation,
-			Reason:             reasonInvalidEntry,
-			Message:            "Warp menu entry is not rendered, because it is invalid.",
-		}
-
-		readyCondition := v1.Condition{
-			Type:               warpmenu.ConditionReady,
-			Status:             v1.ConditionFalse,
-			ObservedGeneration: entry.Generation,
-			Reason:             reasonInvalidEntry,
-			Message:            "Warp menu entry is not ready, because of invalid entries",
-		}
-
-		if statusError := r.updateStatusCondition(ctx, entry, visibleCondition, readyCondition); statusError != nil {
+		if statusError := r.applyInvalidEntryStatus(ctx, entry, mErr); statusError != nil {
 			return wrapUpdateStatusError(statusError)
 		}
-
 		return nil
 	}
 
@@ -255,6 +234,30 @@ func (r *WarpMenuConfigReconciler) updateWarpCRStatus(ctx context.Context, recon
 	r.eventRecorder.Eventf(entry, nil, corev1.EventTypeNormal, reasonMenuUpdated, actionReconcile, "WarpMenuEntry has been applied successfully")
 
 	return nil
+}
+
+// applyInvalidEntryStatus emits a warning event and sets the entry's conditions to reflect an invalid state.
+func (r *WarpMenuConfigReconciler) applyInvalidEntryStatus(ctx context.Context, entry *warpmenu.WarpMenuEntry, mErr error) error {
+	r.eventRecorder.Eventf(entry, nil, corev1.EventTypeWarning, reasonInvalidEntry, actionReconcile,
+		"warp cr is invalid: %v", mErr)
+
+	visibleCondition := v1.Condition{
+		Type:               warpmenu.ConditionVisible,
+		Status:             v1.ConditionFalse,
+		ObservedGeneration: entry.Generation,
+		Reason:             reasonInvalidEntry,
+		Message:            "Warp menu entry is not rendered, because it is invalid.",
+	}
+
+	readyCondition := v1.Condition{
+		Type:               warpmenu.ConditionReady,
+		Status:             v1.ConditionFalse,
+		ObservedGeneration: entry.Generation,
+		Reason:             reasonInvalidEntry,
+		Message:            "Warp menu entry is not ready, because of invalid entries",
+	}
+
+	return r.updateStatusCondition(ctx, entry, visibleCondition, readyCondition)
 }
 
 // updateStatusCondition applies conditions to the entry's status and persists the update.
