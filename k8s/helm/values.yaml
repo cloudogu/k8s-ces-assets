@@ -28,13 +28,6 @@ warp:
         de: "Support"
         en: "Support"
 
-    # This is a test entry!!!
-    Test:
-      order: 401
-      displayName:
-        de: "TestKategorie"
-        en: "TestCategory"
-
   defaultEntries:
     docsCloudoguComUrl:
       enabled: true
@@ -59,16 +52,6 @@ warp:
         de: "cloudogu platform"
         en: "cloudogu platform"
       href: "https://platform.cloudogu.com"
-
-    #Test Entry
-    google:
-      enabled: true
-      category: "SearchEngine"
-      displayName:
-        de: "Google Suche"
-        en: "Google Search"
-      href: "https://google.com"
-
 
 ingress:
   className: "k8s-ecosystem-ces-service"
