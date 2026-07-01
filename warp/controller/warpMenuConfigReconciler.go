@@ -93,21 +93,10 @@ func (r *WarpMenuConfigReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	warpMenuEntries, validationErrs := r.mapWarpMenuCRItemsToEntriesWithCategory(warpCrEntries.Items)
 	if len(validationErrs) != 0 {
-		r.emitGlobalWarning(ctx, reasonInvalidEntry, "one or more warpCRs are invalid")
-
-		loggableErrs := make(map[string]string, len(validationErrs))
-		for crName, vErr := range validationErrs {
-			loggableErrs[crName] = vErr.Error()
-		}
-
-		logger.Info("one or more warpCRs are invalid; skipping them for warp menu",
-			"invalidCount", len(validationErrs),
-			"validationErrors", loggableErrs,
-		)
+		r.handleValidationErrors(ctx, validationErrs)
 	}
 
-	defaultCategories := warpMenuConfiguration.DefaultCategories
-	categories := defaultCategories.InsertEntries(warpMenuEntries)
+	categories := warpMenuConfiguration.DefaultCategories.InsertEntries(warpMenuEntries)
 
 	if wErr := r.writeWarpMenuFile(categories, logger); wErr != nil {
 		return ctrl.Result{}, r.handleOperatorError(ctx, reasonFailedWriteMenu, "failed to write warp menu file", wErr)
@@ -442,4 +431,21 @@ func (r *WarpMenuConfigReconciler) emitGlobalNormal(ctx context.Context, reason,
 func (r *WarpMenuConfigReconciler) handleOperatorError(ctx context.Context, reason, msg string, err error) error {
 	r.emitGlobalWarning(ctx, reason, msg)
 	return fmt.Errorf("%s: %w", msg, err)
+}
+
+// handleValidationErrors emits a global warning to the component cr and also logs validationErrors with the corresponding count
+func (r *WarpMenuConfigReconciler) handleValidationErrors(ctx context.Context, validationErrs map[string]error) {
+	logger := log.FromContext(ctx)
+
+	r.emitGlobalWarning(ctx, reasonInvalidEntry, "one or more warpCRs are invalid")
+
+	loggableErrs := make(map[string]string, len(validationErrs))
+	for crName, vErr := range validationErrs {
+		loggableErrs[crName] = vErr.Error()
+	}
+
+	logger.Info("one or more warpCRs are invalid; skipping them for warp menu",
+		"invalidCount", len(validationErrs),
+		"validationErrors", loggableErrs,
+	)
 }
