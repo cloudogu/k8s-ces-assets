@@ -2,12 +2,13 @@ package types
 
 import (
 	"encoding/json"
+	"math"
 	"sort"
 )
 
 const (
-	// defaultCategoryOrder is set to 9999 so unconfigured categories appear at the end of the menu.
-	defaultCategoryOrder = 9999
+	// defaultCategoryOrder is set to math.MaxInt so unconfigured categories appear at the end of the menu.
+	defaultCategoryOrder = math.MaxInt
 )
 
 // Category groups related entries under a named section in the warp menu.
@@ -28,7 +29,7 @@ type Category struct {
 func CreateCategoryFromIdentifier(identifier string) Category {
 	return Category{
 		Identifier:   identifier,
-		Localization: make(LocalizationMap),
+		Localization: LocalizationMapFromIdentifier(identifier),
 		Order:        defaultCategoryOrder,
 		Entries:      make(Entries, 0),
 	}
@@ -89,8 +90,7 @@ func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
 		categoryName := entry.Category
 		cat, exists := categoryMap[categoryName]
 		if !exists {
-			newCat := CreateCategoryFromIdentifier(categoryName)
-			cat = &newCat
+			cat = new(CreateCategoryFromIdentifier(categoryName))
 			categoryMap[categoryName] = cat
 		}
 		cat.Entries = append(cat.Entries, entry.Entry)
@@ -113,12 +113,10 @@ func (c Categories) InsertEntries(newEntries EntriesWithCategory) Categories {
 func (c Category) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Title        string          `json:"Title"`
-		Order        int             `json:"Order"`
 		Localization LocalizationMap `json:"Localization"`
 		Entries      Entries         `json:"Entries"`
 	}{
 		Title:        c.Identifier,
-		Order:        c.Order,
 		Localization: c.Localization,
 		Entries:      c.Entries,
 	})

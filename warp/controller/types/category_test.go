@@ -73,7 +73,8 @@ func TestCreateCategoryFromIdentifier(t *testing.T) {
 	assert.Equal(t, "myapp", cat.Identifier)
 	assert.Equal(t, defaultCategoryOrder, cat.Order)
 	assert.NotNil(t, cat.Localization, "Localization must be initialised")
-	assert.Empty(t, cat.Localization)
+	assert.NotEmpty(t, cat.Localization)
+	assert.Equal(t, LocalizationMapFromIdentifier(cat.Identifier), cat.Localization)
 	assert.NotNil(t, cat.Entries, "Entries must be initialised")
 	assert.Empty(t, cat.Entries)
 }
@@ -232,7 +233,6 @@ func TestCategory_MarshalJSON(t *testing.T) {
 			},
 			expected: jsonCategory{
 				Title:        "apps",
-				Order:        500,
 				Localization: map[string]string{"de": "Anwendungen", "en": "Applications"},
 				Entries:      []jsonEntry{{Title: "my-app", DisplayName: "Meine App", Href: "/apps/my-app", Target: "self", Localization: map[string]string{"de": "Meine App", "en": "My App"}}},
 			},
@@ -247,7 +247,6 @@ func TestCategory_MarshalJSON(t *testing.T) {
 			},
 			expected: jsonCategory{
 				Title:        "empty",
-				Order:        defaultCategoryOrder,
 				Localization: map[string]string{},
 				Entries:      []jsonEntry{},
 			},
