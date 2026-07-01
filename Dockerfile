@@ -41,11 +41,12 @@ FROM alpine:3.20
 LABEL maintainer="hello@cloudogu.com"
 
 ENV WARP_MENU_VERSION=2.1.0 \
-    WARP_MENU_TAR_SHA256="TODO" \
+    WARP_MENU_TAR_SHA256="cd103aa5bf9eec48f2e29b6128b11de174f6db449d701ed07337769e0f93990d" \
     CES_ABOUT_VERSION="0.7.0" \
-    CES_ABOUT_TAR_SHA256="fcfdfb86dac75d5ae751cc0e8c3436ecee12f0d5ed830897c4f61029ae1df27e" \
-    # Used in template to invalidate caches - do not remove. The release script will auto update this line
-    VERSION="2.0.2"
+    CES_ABOUT_TAR_SHA256="fcfdfb86dac75d5ae751cc0e8c3436ecee12f0d5ed830897c4f61029ae1df27e"
+
+# Used in template to invalidate caches - do not remove. The release script will auto update this line
+ENV VERSION="2.1.0"
 
 # Install required packages
 RUN apk upgrade \
