@@ -84,20 +84,3 @@ func TestLocalizationMap_MarshalJSON(t *testing.T) {
 		})
 	}
 }
-
-func TestLocalizationMapFromIdentifier(t *testing.T) {
-	tests := []struct {
-		input string
-	}{
-		{"myapp"},
-		{""},
-		{"some-identifier_123"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := LocalizationMapFromIdentifier(tt.input)
-			assert.Equal(t, tt.input, result[LocaleDe])
-			assert.Equal(t, tt.input, result[LocaleEn])
-		})
-	}
-}

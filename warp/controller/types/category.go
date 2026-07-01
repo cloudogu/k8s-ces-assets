@@ -29,7 +29,7 @@ type Category struct {
 func CreateCategoryFromIdentifier(identifier string) Category {
 	return Category{
 		Identifier:   identifier,
-		Localization: LocalizationMapFromIdentifier(identifier),
+		Localization: make(LocalizationMap),
 		Order:        defaultCategoryOrder,
 		Entries:      make(Entries, 0),
 	}

@@ -73,8 +73,7 @@ func TestCreateCategoryFromIdentifier(t *testing.T) {
 	assert.Equal(t, "myapp", cat.Identifier)
 	assert.Equal(t, defaultCategoryOrder, cat.Order)
 	assert.NotNil(t, cat.Localization, "Localization must be initialised")
-	assert.NotEmpty(t, cat.Localization)
-	assert.Equal(t, LocalizationMapFromIdentifier(cat.Identifier), cat.Localization)
+	assert.Empty(t, cat.Localization)
 	assert.NotNil(t, cat.Entries, "Entries must be initialised")
 	assert.Empty(t, cat.Entries)
 }

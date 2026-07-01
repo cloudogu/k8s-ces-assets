@@ -56,13 +56,3 @@ func (d LocalizationMap) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(resultMap)
 }
-
-// LocalizationMapFromIdentifier returns a LocalizationMap whose "de" and "en"
-// values are both set to s. Useful when only a locale-independent identifier is
-// available and no separate translations exist yet.
-func LocalizationMapFromIdentifier(s string) LocalizationMap {
-	return map[Locale]string{
-		LocaleDe: s,
-		LocaleEn: s,
-	}
-}
