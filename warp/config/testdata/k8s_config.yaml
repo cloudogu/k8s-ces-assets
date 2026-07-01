@@ -19,12 +19,14 @@ data:
     defaultEntries:
       docsCloudoguComUrl:
         category: "Support"
+        enabled: true
         displayName:
           de: "Cloudogu EcoSystem Dokumentation"
           en: "Cloudogu EcoSystem documentation"
         href: "https://docs.cloudogu.com"
       aboutCloudoguToken:
         category: "Support"
+        enabled: true
         displayName:
           de: "Über Cloudogu"
           en: "About Cloudogu"

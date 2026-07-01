@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	_ "embed"
+	"math"
 	"os"
 	"testing"
 
@@ -107,13 +108,14 @@ defaultEntries: {}
 			},
 		},
 		{
-			name: "unknown locale in displayName is logged and falls back to identifier",
+			name: "unknown locale in entry displayName is logged",
 			setupClient: func() *corev1.ConfigMap {
 				return makeConfigMap(`
 categories: {}
 defaultEntries:
   myEntry:
     category: "support"
+    enabled: true
     displayName:
       fr: "Bonjour"
     href: "/some/path"
@@ -124,10 +126,7 @@ defaultEntries:
 				require.Len(t, cfg.DefaultCategories, 1, "entry must still be created despite unknown locale")
 				require.Len(t, cfg.DefaultCategories[0].Entries, 1)
 				entry := cfg.DefaultCategories[0].Entries[0]
-				assert.Equal(t, "myEntry", entry.Localization[types2.LocaleDe],
-					"de display name should fall back to identifier")
-				assert.Equal(t, "myEntry", entry.Localization[types2.LocaleEn],
-					"en display name should fall back to identifier")
+				assert.Empty(t, entry.Localization, "unknown locale must not be added to localization map")
 			},
 		},
 		{
@@ -138,6 +137,7 @@ categories: {}
 defaultEntries:
   externalLink:
     category: "support"
+    enabled: true
     displayName:
       de: "Extern"
       en: "External"
@@ -159,6 +159,7 @@ categories: {}
 defaultEntries:
   internalLink:
     category: "support"
+    enabled: true
     displayName:
       de: "Intern"
       en: "Internal"
@@ -173,7 +174,7 @@ defaultEntries:
 			},
 		},
 		{
-			name: "unknown locale in category displayName is logged and falls back to identifier",
+			name: "unknown locale in category displayName is logged",
 			setupClient: func() *corev1.ConfigMap {
 				return makeConfigMap(`
 categories:
@@ -187,10 +188,7 @@ defaultEntries: {}
 			check: func(t *testing.T, cfg *Configuration) {
 				require.Len(t, cfg.DefaultCategories, 1, "category must still be created despite unknown locale")
 				cat := cfg.DefaultCategories[0]
-				assert.Equal(t, "myCategory", cat.Localization[types2.LocaleDe],
-					"de display name should fall back to identifier")
-				assert.Equal(t, "myCategory", cat.Localization[types2.LocaleEn],
-					"en display name should fall back to identifier")
+				assert.Empty(t, cat.Localization, "unknown locale must not be added to localization map")
 			},
 		},
 		{
@@ -207,8 +205,83 @@ defaultEntries: {}
 			},
 			check: func(t *testing.T, cfg *Configuration) {
 				require.Len(t, cfg.DefaultCategories, 1)
-				assert.Equal(t, 9999, cfg.DefaultCategories[0].Order,
-					"missing order must default to 9999")
+				assert.Equal(t, math.MaxInt, cfg.DefaultCategories[0].Order,
+					"missing order must default to math.MaxInt")
+			},
+		},
+		{
+			name: "ConfigMap exists but warp.yaml key is missing returns error",
+			setupClient: func() *corev1.ConfigMap {
+				return &corev1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{Name: WarpConfigMap, Namespace: "test"},
+					Data:       map[string]string{},
+				}
+			},
+			wantErr: "missing required key",
+		},
+		{
+			name: "disabled entry is skipped",
+			setupClient: func() *corev1.ConfigMap {
+				return makeConfigMap(`
+categories: {}
+defaultEntries:
+  disabledEntry:
+    category: "support"
+    enabled: false
+    displayName:
+      de: "Deaktiviert"
+      en: "Disabled"
+    href: "/some/path"
+`)
+			},
+			check: func(t *testing.T, cfg *Configuration) {
+				assert.Empty(t, cfg.DefaultCategories, "disabled entry must not create a category")
+			},
+		},
+		{
+			name: "entry without category logs error",
+			setupClient: func() *corev1.ConfigMap {
+				return makeConfigMap(`
+categories: {}
+defaultEntries:
+  noCategoryEntry:
+    enabled: true
+    displayName:
+      de: "Kein"
+      en: "None"
+    href: "/some/path"
+`)
+			},
+			wantLogErr: true,
+			check: func(t *testing.T, cfg *Configuration) {
+				assert.Empty(t, cfg.DefaultCategories, "entry without category must not be inserted")
+			},
+		},
+		{
+			name: "allow entry without en locale in displayname",
+			setupClient: func() *corev1.ConfigMap {
+				return makeConfigMap(`
+categories: {}
+defaultEntries:
+  myEntry:
+    category: "support"
+    enabled: true
+    displayName:
+      de: "meineintrag"
+      fr: "bonjour"
+    href: "/some/path"
+`)
+			},
+			wantLogErr: true,
+			check: func(t *testing.T, cfg *Configuration) {
+				require.Len(t, cfg.DefaultCategories, 1)
+				require.Len(t, cfg.DefaultCategories[0].Entries, 1, "entry must still be created despite no English display name")
+				entry := cfg.DefaultCategories[0].Entries[0]
+
+				require.Len(t, entry.Localization, 1, "localization should have de as entry")
+				assert.Equal(t, "meineintrag", entry.Localization[types2.LocaleDe],
+					"de display name should be exists")
+
 			},
 		},
 	}
@@ -288,14 +361,14 @@ func TestWarpConfigMapPredicate(t *testing.T) {
 		assert.True(t, p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: newCM}))
 	})
 
-	t.Run("Update returns true when BinaryData changes", func(t *testing.T) {
+	t.Run("Update returns false when BinaryData changes", func(t *testing.T) {
 		old := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Name: WarpConfigMap},
 			BinaryData: map[string][]byte{"k": {1}},
 		}
 		newCM := old.DeepCopy()
 		newCM.BinaryData["k"] = []byte{2}
-		assert.True(t, p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: newCM}))
+		assert.False(t, p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: newCM}))
 	})
 
 	t.Run("Update returns false when objects are not ConfigMaps", func(t *testing.T) {

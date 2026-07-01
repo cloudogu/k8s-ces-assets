@@ -20,6 +20,7 @@ import (
 
 const (
 	WarpConfigMap = "k8s-ces-warp-config"
+	warpConfigKey = "warp.yaml"
 	// namespaceEnvVar is the environment variable that defines the Kubernetes namespace
 	// the controller should watch for WarpMenuEntry resources.
 	namespaceEnvVar     = "WATCH_NAMESPACE"
@@ -42,6 +43,7 @@ type CategoryDTO struct {
 // EntryDTO is the YAML representation of a default warp menu entry.
 type EntryDTO struct {
 	Category    string         `yaml:"category"`
+	Enabled     bool           `yaml:"enabled"`
 	DisplayName DisplayNameDTO `yaml:"displayName"`
 	Link        string         `yaml:"href"`
 }
@@ -76,7 +78,11 @@ func ReadConfiguration(ctx context.Context, client client.Client, namespace stri
 		return nil, fmt.Errorf("failed to get warp menu configmap: %w", err)
 	}
 
-	data := configmap.Data["warp.yaml"]
+	data, ok := configmap.Data[warpConfigKey]
+	if !ok {
+		return nil, fmt.Errorf("warp config %q is missing required key %q", WarpConfigMap, warpConfigKey)
+	}
+
 	var yamlData WarpYamlDTO
 
 	if err := yaml.Unmarshal([]byte(data), &yamlData); err != nil {
@@ -112,6 +118,15 @@ func mapYamlConfigToDefaultEntries(entries map[string]yaml.Node) (types2.Entries
 		var eDTO EntryDTO
 		if err := entryNode.Decode(&eDTO); err != nil {
 			mappingErrs = append(mappingErrs, fmt.Errorf("failed to decode entry %s: %w", entryName, err))
+			continue
+		}
+
+		if !eDTO.Enabled {
+			continue
+		}
+
+		if len(eDTO.Category) == 0 {
+			mappingErrs = append(mappingErrs, fmt.Errorf("category is empty in entry %s", entryName))
 			continue
 		}
 
@@ -194,11 +209,6 @@ func mapToLocalizationMap(displayName DisplayNameDTO, identifier string, context
 		localizationMap[locale] = translation
 	}
 
-	// Fall back to the identifier when no valid localizations were provided.
-	if len(localizationMap) == 0 {
-		return types2.LocalizationMapFromIdentifier(identifier), errs
-	}
-
 	return localizationMap, errs
 }
 
@@ -265,8 +275,7 @@ func warpConfigMapHasChangedPredicate() predicate.Predicate {
 				return false
 			}
 
-			return !reflect.DeepEqual(oldCM.Data, newCM.Data) ||
-				!reflect.DeepEqual(oldCM.BinaryData, newCM.BinaryData)
+			return !reflect.DeepEqual(oldCM.Data, newCM.Data)
 		},
 		GenericFunc: func(e event.GenericEvent) bool {
 			return true
