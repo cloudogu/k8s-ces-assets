@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	k8sv1 "github.com/cloudogu/k8s-component-lib/api/v1"
+	componentv1 "github.com/cloudogu/k8s-component-lib/api/v1"
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	warpCtrl "github.com/cloudogu/warp-assets/controller"
@@ -36,7 +36,7 @@ type k8sManager interface {
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(warpmenu.AddToScheme(scheme))
-	utilruntime.Must(k8sv1.AddToScheme(scheme))
+	utilruntime.Must(componentv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	if err := logging.ConfigureLogger(); err != nil {
@@ -80,18 +80,18 @@ func start() error {
 func setupWarpMenuReconciler(warpMenuManager k8sManager, watchNamespace string) error {
 	warpMenuClient := warpMenuManager.GetClient()
 
-	deploymentName, err := config.ReadComponentName()
+	componentName, err := config.ReadComponentName()
 	if err != nil {
 		return fmt.Errorf("read config value 'deployment name': %w", err)
 	}
-	eventRecorder := warpMenuManager.GetEventRecorder(deploymentName)
+	eventRecorder := warpMenuManager.GetEventRecorder(componentName)
 
 	warpMenuPath, err := config.ReadWarpPath()
 	if err != nil {
 		return fmt.Errorf("read config value 'warp path': %w", err)
 	}
 
-	componentCRKey := k8sTypes.NamespacedName{Name: deploymentName, Namespace: watchNamespace}
+	componentCRKey := k8sTypes.NamespacedName{Name: componentName, Namespace: watchNamespace}
 	reconciler := warpCtrl.NewWarpMenuReconciler(warpMenuClient, eventRecorder, warpMenuPath, componentCRKey)
 	err = reconciler.SetupWithManager(warpMenuManager)
 	if err != nil {
