@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 
+	componentv1 "github.com/cloudogu/k8s-component-lib/api/v1"
 	warpmenu "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/cloudogu/warp-assets/config"
 	warpCtrl "github.com/cloudogu/warp-assets/controller"
 	"github.com/cloudogu/warp-assets/logging"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sTypes "k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -34,6 +36,7 @@ type k8sManager interface {
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(warpmenu.AddToScheme(scheme))
+	utilruntime.Must(componentv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 
 	if err := logging.ConfigureLogger(); err != nil {
@@ -64,7 +67,7 @@ func start() error {
 		return fmt.Errorf("create manager: %w", err)
 	}
 
-	if err = setupWarpMenuReconciler(warpMenuManager); err != nil {
+	if err = setupWarpMenuReconciler(warpMenuManager, watchNamespace); err != nil {
 		return fmt.Errorf("setup up reconciler: %w", err)
 	}
 
@@ -74,21 +77,22 @@ func start() error {
 	return nil
 }
 
-func setupWarpMenuReconciler(warpMenuManager k8sManager) error {
+func setupWarpMenuReconciler(warpMenuManager k8sManager, watchNamespace string) error {
 	warpMenuClient := warpMenuManager.GetClient()
 
-	deploymentName, err := config.ReadDeploymentName()
+	componentName, err := config.ReadComponentName()
 	if err != nil {
 		return fmt.Errorf("read config value 'deployment name': %w", err)
 	}
-	eventRecorder := warpMenuManager.GetEventRecorder(deploymentName)
+	eventRecorder := warpMenuManager.GetEventRecorder(componentName)
 
 	warpMenuPath, err := config.ReadWarpPath()
 	if err != nil {
 		return fmt.Errorf("read config value 'warp path': %w", err)
 	}
 
-	reconciler := warpCtrl.NewWarpMenuReconciler(warpMenuClient, eventRecorder, warpMenuPath, deploymentName)
+	componentCRKey := k8sTypes.NamespacedName{Name: componentName, Namespace: watchNamespace}
+	reconciler := warpCtrl.NewWarpMenuReconciler(warpMenuClient, eventRecorder, warpMenuPath, componentCRKey)
 	err = reconciler.SetupWithManager(warpMenuManager)
 	if err != nil {
 		return fmt.Errorf("setup reconciler with manager: %w", err)
