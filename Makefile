@@ -2,11 +2,11 @@
 ARTIFACT_ID=k8s-ces-assets
 ARTIFACT_ID_WARP=${ARTIFACT_ID}-warp
 ARTIFACT_ID_MAINTENANCE=${ARTIFACT_ID}-maintenance
-VERSION=2.0.2
+VERSION=3.0.0
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 
-MAKEFILES_VERSION=10.5.0
-GOTAG=1.26.0
+MAKEFILES_VERSION=10.10.0
+GOTAG=1.26.4
 LINT_VERSION=v2.9.0
 
 ADDITIONAL_CLEAN=clean_charts
@@ -28,6 +28,7 @@ include build/make/clean.mk
 include build/make/digital-signature.mk
 include build/make/mocks.mk
 include build/make/release.mk
+include build/make/k8s-component.mk
 
 include build/make/k8s-controller.mk
 include build/make/k8s.mk
@@ -97,12 +98,14 @@ images-import: ## import images from ces-importer and
 	@make image-import \
 		IMAGE_DIR=./warp \
 		IMAGE=${ARTIFACT_ID_WARP}:${VERSION} \
-		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH):${VERSION}
+		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH):${VERSION} \
+		IMAGE_DEV_PUSH=$(IMAGE_PUSH_REGISTRY_HOST)$(IMAGE_PUSH_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_WARP)/$(GIT_BRANCH)
 	@echo "Import maintenance assets image"
 	@make image-import \
 		IMAGE_DIR=./maintenance \
 		IMAGE=${ARTIFACT_ID_MAINTENANCE}:${VERSION} \
-		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH):${VERSION}
+		IMAGE_DEV_VERSION=$(CES_REGISTRY_HOST)$(CES_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH):${VERSION} \
+		IMAGE_DEV_PUSH=$(IMAGE_PUSH_REGISTRY_HOST)$(IMAGE_PUSH_REGISTRY_NAMESPACE)/$(ARTIFACT_ID_MAINTENANCE)/$(GIT_BRANCH)
 
 .PHONY: vendor
 vendor: # no prerequisites
@@ -125,7 +128,7 @@ $(STATIC_ANALYSIS_DIR)/static-analysis.log: $(STATIC_ANALYSIS_DIR)
 
 $(STATIC_ANALYSIS_DIR)/static-analysis-cs.log: $(STATIC_ANALYSIS_DIR)
 	@echo "run static analysis with export to checkstyle format"
-	@$(LINT) $(LINTFLAGS) --output.checkstyle.path stdout run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER) > $@
+	@$(LINT) $(LINTFLAGS) --output.checkstyle.path $@ run ./warp/... ./maintenance/... $(ADDITIONAL_LINTER)
 
 
 clean_charts:

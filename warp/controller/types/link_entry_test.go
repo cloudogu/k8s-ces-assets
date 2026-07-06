@@ -1,55 +1,35 @@
 package types
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
-func TestCategoryString(t *testing.T) {
-	category := Category{Title: "Hitchhiker"}
-	assert.Equal(t, "Hitchhiker", fmt.Sprintf("%v", category))
-}
-
 func TestTarget_MarshalJSON(t *testing.T) {
-	testMarshalJSON(t, TARGET_EXTERNAL, "{\"Target\":\"external\"}")
-	testMarshalJSON(t, TARGET_SELF, "{\"Target\":\"self\"}")
-
-	if _, err := json.Marshal(&targetStruct{12}); err == nil {
-		t.Errorf("marshal should fail because of an invalid value")
+	tests := []struct {
+		name     string
+		target   Target
+		expected string
+		wantErr  bool
+	}{
+		{name: "self", target: TARGET_SELF, expected: `{"Target":"self"}`},
+		{name: "external", target: TARGET_EXTERNAL, expected: `{"Target":"external"}`},
+		{name: "unknown value returns error", target: Target(12), wantErr: true},
 	}
-}
-
-func TestEntries_Swap(t *testing.T) {
-	// given
-	entry1 := Entry{Title: "1"}
-	entry2 := Entry{Title: "2"}
-	entries := Entries{entry1, entry2}
-
-	// when
-	entries.Swap(0, 1)
-
-	// then
-	assert.Equal(t, "2", entries[0].Title)
-	assert.Equal(t, "1", entries[1].Title)
-}
-
-func testMarshalJSON(t *testing.T, target Target, expected string) {
-	value := marshal(t, target)
-	if value != expected {
-		t.Errorf("value %s is not the expected %s", value, expected)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(targetStruct{tt.target})
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, string(data))
+		})
 	}
-}
-
-func marshal(t *testing.T, target Target) string {
-	test := targetStruct{target}
-	testJson, err := json.Marshal(&test)
-	if err != nil {
-		t.Errorf("failed to marshal test struct: %v", err)
-	}
-	return string(testJson)
 }
 
 type targetStruct struct {
@@ -57,27 +37,162 @@ type targetStruct struct {
 }
 
 func TestEntries_Len(t *testing.T) {
-	// given
-	entryA := Entry{}
-	entryB := Entry{}
-	entries := Entries{entryA, entryB}
-
-	// when
-	length := entries.Len()
-
-	// then
-	assert.Equal(t, 2, length)
+	entries := Entries{Entry{}, Entry{}}
+	assert.Equal(t, 2, entries.Len())
 }
 
 func TestEntries_Less(t *testing.T) {
-	// given
-	entryA := Entry{DisplayName: "A"}
-	entryB := Entry{DisplayName: "B"}
-	entries := Entries{entryA, entryB}
+	tests := []struct {
+		name     string
+		a, b     Entry
+		expected bool
+	}{
+		{
+			name:     "a comes before b alphabetically",
+			a:        Entry{Identifier: "A"},
+			b:        Entry{Identifier: "B"},
+			expected: true,
+		},
+		{
+			name:     "b comes before a alphabetically",
+			a:        Entry{Identifier: "B"},
+			b:        Entry{Identifier: "A"},
+			expected: false,
+		},
+		{
+			name:     "equal identifiers",
+			a:        Entry{Identifier: "A"},
+			b:        Entry{Identifier: "A"},
+			expected: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			entries := Entries{tt.a, tt.b}
+			assert.Equal(t, tt.expected, entries.Less(0, 1))
+		})
+	}
+}
 
-	// when
-	result := entries.Less(0, 1)
+func TestEntries_Swap(t *testing.T) {
+	entry1 := Entry{Identifier: "1"}
+	entry2 := Entry{Identifier: "2"}
+	entries := Entries{entry1, entry2}
 
-	// then
-	assert.True(t, result)
+	entries.Swap(0, 1)
+
+	assert.Equal(t, entry2, entries[0])
+	assert.Equal(t, entry1, entries[1])
+}
+
+func TestEntriesWithCategory_MapToEntries(t *testing.T) {
+	t.Run("preserves entries and strips category field", func(t *testing.T) {
+		e1 := Entry{Identifier: "docs", Href: "/docs"}
+		e2 := Entry{Identifier: "admin", Href: "/admin"}
+		input := EntriesWithCategory{
+			{Category: "support", Entry: e1},
+			{Category: "apps", Entry: e2},
+		}
+
+		result := input.MapToEntries()
+
+		assert.Equal(t, Entries{e1, e2}, result)
+	})
+
+	t.Run("empty input returns empty Entries", func(t *testing.T) {
+		result := EntriesWithCategory{}.MapToEntries()
+		assert.Empty(t, result)
+	})
+}
+
+func TestEntry_MarshalJSON(t *testing.T) {
+	type jsonEntry struct {
+		Title        string            `json:"Title"`
+		DisplayName  string            `json:"DisplayName"`
+		Href         string            `json:"Href"`
+		Target       string            `json:"Target"`
+		Localization map[string]string `json:"Localization"`
+	}
+
+	tests := []struct {
+		name     string
+		input    Entry
+		expected jsonEntry
+	}{
+		{
+			name: "both locales set — DE wins",
+			input: Entry{
+				Identifier:   "nexus",
+				Localization: LocalizationMap{LocaleDe: "Nexus DE", LocaleEn: "Nexus EN"},
+				Href:         "/nexus",
+				Target:       TARGET_EXTERNAL,
+			},
+			expected: jsonEntry{
+				Title:        "nexus",
+				DisplayName:  "Nexus DE",
+				Href:         "/nexus",
+				Target:       "external",
+				Localization: map[string]string{"de": "Nexus DE", "en": "Nexus EN"},
+			},
+		},
+		{
+			name: "only DE set",
+			input: Entry{
+				Identifier:   "nexus",
+				Localization: LocalizationMap{LocaleDe: "Nexus DE"},
+				Href:         "/nexus",
+				Target:       TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "nexus",
+				DisplayName:  "Nexus DE",
+				Href:         "/nexus",
+				Target:       "self",
+				Localization: map[string]string{"de": "Nexus DE"},
+			},
+		},
+		{
+			name: "only EN set — falls back to EN",
+			input: Entry{
+				Identifier:   "tool",
+				Localization: LocalizationMap{LocaleEn: "Tool EN"},
+				Href:         "/tool",
+				Target:       TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "tool",
+				DisplayName:  "Tool EN",
+				Href:         "/tool",
+				Target:       "self",
+				Localization: map[string]string{"en": "Tool EN"},
+			},
+		},
+		{
+			name: "no locales set — falls back to Identifier",
+			input: Entry{
+				Identifier:   "my-app",
+				Localization: LocalizationMap{},
+				Href:         "/my-app",
+				Target:       TARGET_SELF,
+			},
+			expected: jsonEntry{
+				Title:        "my-app",
+				DisplayName:  "my-app",
+				Href:         "/my-app",
+				Target:       "self",
+				Localization: map[string]string{},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data, err := json.Marshal(tt.input)
+			require.NoError(t, err)
+
+			var got jsonEntry
+			require.NoError(t, json.Unmarshal(data, &got))
+			assert.Equal(t, tt.expected, got)
+		})
+	}
 }

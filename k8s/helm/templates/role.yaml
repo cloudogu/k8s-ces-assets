@@ -18,23 +18,31 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - configmaps
-    resourceNames:
-      - "k8s-ces-menu-json"
+      - events
     verbs:
-      - update
+      - create
+      - patch
   - apiGroups:
-      - apps
-    resources:
-      - deployments
-    verbs:
-      - list
-      - get
-      - watch
-  - apiGroups:
-      - ""
+      - "events.k8s.io"
     resources:
       - events
     verbs:
       - create
+      - patch
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries
+      - components
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - warpmenuentries/status
+    verbs:
+      - get
+      - update
       - patch
