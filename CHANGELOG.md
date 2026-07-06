@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#24] Update Warp-Manu to v2.1.0 with support for localization of warp-menu entries
 - [#21] Write events for warp menu to the Component CR
 
+> [!IMPORTANT]
+> Breaking change!
+> For version 3.x k8s-warp-menu-entry-crd needs to be installed in the cluster. 
+> New compatible versions of k8s-dogu-operator is required to ensure warp menu is generated for v2 dogus.
+
 ## [v2.0.2] - 2026-03-12
 ### Changed
 - [#13] added custom 401 and 403 error pages
