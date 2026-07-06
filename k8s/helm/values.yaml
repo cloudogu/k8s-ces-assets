@@ -1,7 +1,6 @@
 global:
   imagePullSecrets:
     - name: "ces-container-registries"
-
 warp:
   categories:
     Development Apps:
@@ -9,25 +8,21 @@ warp:
       displayName:
         de: "Anwendungen"
         en: "Applications"
-
     Administration Apps:
       order: 200
       displayName:
         de: "Administration"
         en: "Administration Apps"
-
     Documentation:
       order: 300
       displayName:
         de: "Dokumentation"
         en: "Documentation"
-
     Support:
       order: 400
       displayName:
         de: "Support"
         en: "Support"
-
   defaultEntries:
     docsCloudoguComUrl:
       enabled: true
@@ -36,7 +31,6 @@ warp:
         de: "Cloudogu EcoSystem Dokumentation"
         en: "Cloudogu EcoSystem documentation"
       href: "https://docs.cloudogu.com"
-
     aboutCloudoguToken:
       enabled: true
       category: "Support"
@@ -44,7 +38,6 @@ warp:
         de: "Über Cloudogu"
         en: "About Cloudogu"
       href: "/info/about"
-
     platform:
       enabled: true
       category: "Support"
@@ -52,7 +45,6 @@ warp:
         de: "cloudogu platform"
         en: "cloudogu platform"
       href: "https://platform.cloudogu.com"
-
 ingress:
   className: "k8s-ecosystem-ces-service"
   host: ""
@@ -70,7 +62,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets
-      tag: 2.0.2
+      tag: 3.0.0
     imagePullPolicy: Always
     config:
       defaultDogu: "usermgt"
@@ -90,7 +82,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets-warp
-      tag: 2.0.2
+      tag: 3.0.0
     imagePullPolicy: Always
     resources:
       requests:
@@ -105,7 +97,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets-maintenance
-      tag: 2.0.2
+      tag: 3.0.0
     imagePullPolicy: Always
     resources:
       requests:
