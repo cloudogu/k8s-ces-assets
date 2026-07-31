@@ -3,7 +3,7 @@
 Der `k8s-ces-assets`-Operator generiert die `menu.json`, die das Warp-Menü steuert.
 Das Menü wird bei jeder Änderung einer der beiden Quellen neu erstellt:
 
-- **WarpMenuEntry-Custom-Resources** — werden von Dogus-Entwicklern erstellt, um ihre
+- **[WarpMenuEntry-Custom-Resources](https://github.com/cloudogu/k8s-warp-menu-entry-lib/blob/main/docs/operations/warp_menu_entry_de.md)** — werden von Dogus-Entwicklern erstellt, um ihre
   Anwendungen im Warp-Menü zu registrieren.
 - **ConfigMap `k8s-ces-warp-config`** — definiert Standardkategorien und statische
   Einträge; wird über die `values.yaml` verwaltet.
@@ -80,60 +80,3 @@ aus der `values.yaml` zu entfernen.
 | `displayName.en` | ja | Englischer Anzeigename. |
 | `href` | ja | URL oder Pfad. Eine absolute URL (mit Schema, z. B. `https://`) öffnet den Link in einem neuen Tab. Ein relativer Pfad (z. B. `/info/about`) öffnet ihn im selben Fenster. |
 
----
-
-## Einträge über WarpMenuEntry-Resources hinzufügen
-
-Dogu-Entwickler registrieren ihre Anwendungen im Warp-Menü, indem sie eine
-`WarpMenuEntry`-Custom-Resource im zugehörigen Namespace erstellen.
-
-```yaml
-apiVersion: k8s.cloudogu.com/v1
-kind: WarpMenuEntry
-metadata:
-  name: my-dogu
-  namespace: ecosystem
-spec:
-  displayName:
-    de: "Mein Dogu"
-    en: "My Dogu"
-  category: "Development Apps"
-  path: /my-dogu
-```
-
-### Spec-Felder
-
-| Feld | Pflicht | Einschränkungen | Beschreibung |
-|---|---|---|---|
-| `displayName.de` | ja | 1–50 Zeichen | Deutscher Anzeigename im Menü. |
-| `displayName.en` | ja | 1–50 Zeichen | Englischer Anzeigename im Menü. |
-| `category` | ja | 1–50 Zeichen | Kategorie. Einen vordefinierten Schlüssel aus der `values.yaml` verwenden oder einen neuen angeben (Order: 9999). |
-| `path` | ja | beginnt mit `/` | Serverrelativer URL-Pfad, z. B. `/my-dogu`. Darf keine Domain oder Schema enthalten. |
-| `disabled` | nein | boolean | Bei `true` wird der Eintrag aus dem Menü ausgeblendet, ohne die Resource zu löschen. Standard: `false`. |
-
-### Status-Conditions
-
-Der Operator setzt nach jeder Reconciliation zwei Conditions am WarpMenuEntry.
-
-| Condition | Status | Bedeutung |
-|---|---|---|
-| `Ready` | `True` | Eintrag ist gültig und das Menü wurde erfolgreich neu erstellt. |
-| `Ready` | `False` | Eintrag hat einen Validierungsfehler (z. B. ungültiger Pfad, leere Kategorie) oder ein interner Fehler ist aufgetreten. Condition-Message oder Operator-Events prüfen. |
-| `Visible` | `True` | Eintrag ist aktuell im Menü gerendert. |
-| `Visible` | `False` | Eintrag ist ausgeblendet — entweder weil `disabled: true` gesetzt ist oder weil der Eintrag die Validierung nicht bestanden hat. |
-
-Ressource inspizieren:
-
-```shell
-kubectl get warp -n ecosystem
-kubectl describe warp my-dogu -n ecosystem
-```
-
-### Eintrag vorübergehend ausblenden
-
-`disabled: true` setzen, um einen Eintrag zu verstecken, ohne die Resource zu löschen:
-
-```yaml
-spec:
-  disabled: true
-```
