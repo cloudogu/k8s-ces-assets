@@ -62,7 +62,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets
-      tag: 3.0.0
+      tag: 3.0.1
     imagePullPolicy: Always
     config:
       defaultDogu: "usermgt"
@@ -82,7 +82,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets-warp
-      tag: 3.0.0
+      tag: 3.0.1
     imagePullPolicy: Always
     resources:
       requests:
@@ -97,7 +97,7 @@ nginx:
     image:
       registry: docker.io
       repository: cloudogu/k8s-ces-assets-maintenance
-      tag: 3.0.0
+      tag: 3.0.1
     imagePullPolicy: Always
     resources:
       requests:
