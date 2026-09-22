@@ -3,7 +3,7 @@
 Der `k8s-ces-assets`-Operator generiert die `menu.json`, die das Warp-Menü steuert.
 Das Menü wird bei jeder Änderung einer der beiden Quellen neu erstellt:
 
-- **[WarpMenuEntry-Custom-Resources](https://github.com/cloudogu/k8s-warp-menu-entry-lib/blob/main/docs/operations/warp_menu_entry_de.md)** — werden von Dogus-Entwicklern erstellt, um ihre
+- **WarpMenuEntry-Custom-Resources** — werden von Dogus-Entwicklern erstellt, um ihre
   Anwendungen im Warp-Menü zu registrieren.
 - **ConfigMap `k8s-ces-warp-config`** — definiert Standardkategorien und statische
   Einträge; wird über die `values.yaml` verwaltet.
