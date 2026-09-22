@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.0.1] - 2026-09-22
+### Changed
+- [#33] Update alpine to fix CVE-2026-31789
+
+### Removed
+- Docs for WarpMenuEntry CR
+
 ## [v3.0.0] - 2026-07-06
 ### Added
 - [#21] Build WarpMenu based on WarpMenuEntry CR
