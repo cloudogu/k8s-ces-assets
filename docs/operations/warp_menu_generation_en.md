@@ -3,7 +3,7 @@
 The `k8s-ces-assets` operator generates the `menu.json` that drives the warp menu.
 It rebuilds the menu whenever one of its two sources changes:
 
-- **[WarpMenuEntry-Custom-Resources](https://github.com/cloudogu/k8s-warp-menu-entry-lib/blob/main/docs/operations/warp_menu_entry_en.md)** — created by dogu developer to register their
+- **WarpMenuEntry custom resources** — created by dogu developer to register their
   applications in the warp menu.
 - **`k8s-ces-warp-config` ConfigMap** — defines default categories and static entries;
   managed via `values.yaml`.
